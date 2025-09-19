@@ -3,59 +3,73 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>EDGE LIF — Indoor Wayfinder (Prototype)</title>
+<title>EDGE LIF — Indoor Wayfinder (Animated Demo)</title>
 <style>
   :root{
-    --brand:#ff2e6b;         /* sidebar / accent */
-    --brand-dark:#e2265f;
-    --bg:#0f1115;            /* map background */
-    --card:#161922;          /* panels */
-    --text:#ffffff;
+    --brand:#ff2e6b;        /* sidebar gradient */
+    --brand-dark:#cf1d55;
+    --bg:#0e1117;           /* app background */
+    --panel:#161b22;
     --muted:#9aa3af;
-    --good:#ffd54a;
+    --good:#ffd54a;         /* end color */
   }
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:16px/1.4 Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;overscroll-behavior:none}
-  .app{display:grid;grid-template-columns:420px 1fr;gap:0;height:100%}
+  html,body{height:100%;margin:0;background:var(--bg);color:#fff;font:16px/1.45 Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  .app{display:grid;grid-template-columns:430px 1fr;height:100%}
+
   /* Sidebar */
-  .sidebar{padding:28px;background:linear-gradient(180deg,var(--brand),var(--brand-dark));display:flex;flex-direction:column;gap:16px;box-shadow:inset -1px 0 0 rgba(255,255,255,.06)}
-  .title{font-weight:700;letter-spacing:.08em;opacity:.9}
-  .panel{background:rgba(255,255,255,.08);border-radius:16px;padding:16px;backdrop-filter:blur(4px);box-shadow:0 8px 24px rgba(0,0,0,.18)}
+  .sidebar{padding:28px;background:linear-gradient(180deg,var(--brand),var(--brand-dark));display:flex;flex-direction:column;gap:16px}
+  .title{font-weight:800;letter-spacing:.06em;opacity:.95}
+  .panel{background:rgba(0,0,0,.22);border-radius:16px;padding:16px;backdrop-filter:blur(4px);box-shadow:0 10px 26px rgba(0,0,0,.22)}
   label{font-size:.85rem;opacity:.9;display:block;margin:8px 0 6px 6px}
   .row{display:flex;gap:10px}
-  input,select,button{width:100%;padding:12px 14px;border:0;border-radius:12px;background:rgba(0,0,0,.25);color:#fff;outline:none}
-  input::placeholder{color:rgba(255,255,255,.7)}
-  .btn{cursor:pointer;transition:transform .06s ease;background:#12141b}
-  .btn:hover{transform:translateY(-1px)}
-  .swap{width:auto;padding:12px;border-radius:12px;background:#0c0e14}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
-  .chip{background:#0c0e14;border-radius:999px;padding:8px 12px;font-size:.9rem;cursor:pointer;opacity:.9}
+  select,button{width:100%;padding:12px 14px;border:0;border-radius:12px;background:rgba(255,255,255,.09);color:#fff;outline:none}
+  .swap{width:auto;padding:12px;border-radius:12px;background:#10131a}
+  .btn{cursor:pointer;background:#0e1016}
+  .btn:hover{filter:brightness(1.05)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .chip{background:#0e1016;border-radius:999px;padding:10px 14px;font-size:.95rem;cursor:pointer;opacity:.9}
   .chip:hover{opacity:1}
-  .routes{display:flex;flex-direction:column;gap:10px;max-height:40vh;overflow:auto}
-  .route{background:#0c0e14;border-radius:12px;padding:12px}
+  .routes{display:flex;flex-direction:column;gap:10px;max-height:38vh;overflow:auto}
+  .route{background:#0e1016;border-radius:12px;padding:12px}
   .route h4{margin:0 0 6px 0;font-size:1rem}
-  .small{color:rgba(255,255,255,.8);font-size:.92rem}
+  .small{color:rgba(255,255,255,.85);font-size:.92rem}
+
   /* Map side */
   .map-wrap{position:relative}
-  .toolbar{position:absolute;left:16px;top:16px;z-index:5;display:flex;gap:8px}
-  .tool{padding:8px 12px;border-radius:10px;background:#1a1f2a;color:#fff;opacity:.9}
+  .legend{position:absolute;right:16px;bottom:16px;background:#151a23;padding:8px 12px;border-radius:10px;font-size:.9rem;opacity:.9}
+  .toolbar{position:absolute;left:16px;top:16px;background:#151a23;padding:8px 12px;border-radius:10px;opacity:.9}
   .map{width:100%;height:100%}
-  .legend{position:absolute;right:16px;bottom:16px;background:#1a1f2a;padding:8px 12px;border-radius:10px;font-size:.9rem;opacity:.9}
-  /* Touch target boost */
-  @media (pointer:coarse){ input,select,button,.chip{font-size:1.1rem;padding:16px}}
+
+  /* Marker pulse */
+  .pulse { filter: url(#glow) }
+  .pulse-ring{
+    fill: none; stroke: var(--good); stroke-width:3; opacity:.7;
+    transform-origin: center; animation: ring 1.6s ease-out infinite;
+  }
+  @keyframes ring{
+    0%{ transform:scale(.2); opacity:.7 }
+    100%{ transform:scale(2.2); opacity:0 }
+  }
+
+  /* Touch boost */
+  @media (pointer:coarse){
+    select,button,.chip{font-size:1.05rem;padding:16px}
+  }
 </style>
 </head>
 <body>
 <div class="app">
   <!-- SIDEBAR -->
   <aside class="sidebar">
-    <div class="title">EDGE LIF — INDOOR WAYFINDER (DEMO)</div>
+    <div class="title">EDGE LIF — INDOOR WAYFINDER (ANIMATED)</div>
 
     <div class="panel">
       <label>From</label>
       <div class="row">
         <select id="from">
           <option value="reception">Reception</option>
+          <option value="lobby">Lobby</option>
           <option value="room1">Room 1</option>
           <option value="room2">Room 2</option>
           <option value="conference">Conference</option>
@@ -69,16 +83,17 @@
         <option value="room1">Room 1</option>
         <option value="room2">Room 2</option>
         <option value="conference">Conference</option>
-        <option value="exit">Exit</option>
+        <option value="lobby">Lobby</option>
         <option value="reception">Reception</option>
+        <option value="exit">Exit</option>
       </select>
 
       <div class="row" style="margin-top:12px">
-        <button class="btn" id="routeBtn">Find route</button>
+        <button class="btn" id="routeBtn">Animate route</button>
       </div>
 
       <div class="chips">
-        <div class="chip" data-from="reception" data-to="room1">Reception → Room 1</div>
+        <div class="chip" data-from="lobby" data-to="room1">Lobby → Room 1</div>
         <div class="chip" data-from="reception" data-to="room2">Reception → Room 2</div>
         <div class="chip" data-from="reception" data-to="conference">Reception → Conference</div>
         <div class="chip" data-from="room1" data-to="exit">Room 1 → Exit</div>
@@ -87,77 +102,47 @@
 
     <div class="panel">
       <div style="font-weight:700;margin-bottom:10px">Suggested route</div>
-      <div id="summary" class="small">Pick a destination to see the details.</div>
+      <div id="summary" class="small">Pick a destination to see time & distance.</div>
       <div class="routes" id="steps"></div>
     </div>
   </aside>
 
   <!-- MAP -->
   <section class="map-wrap">
-    <div class="toolbar">
-      <div class="tool">Tap anywhere to inspect coords</div>
-    </div>
-    <div class="legend">● start  ○ end  — route</div>
+    <div class="toolbar">Tap map to log SVG coords</div>
+    <div class="legend">● START · ⤳ moving arrow · ◎ DESTINATION</div>
 
-    <!-- Inline SVG “floorplan” (placeholder). Replace with your traced map later. -->
     <svg id="map" class="map" viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg">
       <!-- defs -->
       <defs>
         <linearGradient id="routeGradient" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stop-color="#ffd54a"/>
-          <stop offset="100%" stop-color="#ff2e6b"/>
+          <stop offset="0%" stop-color="#ff2e6b"/>
+          <stop offset="100%" stop-color="#ffd54a"/>
         </linearGradient>
         <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="6" result="coloredBlur"/>
-          <feMerge>
-            <feMergeNode in="coloredBlur"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
+          <feGaussianBlur stdDeviation="6" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
 
-      <!-- background grid for subtle depth -->
-      <rect x="0" y="0" width="1200" height="600" fill="#0f1115"/>
-      <g opacity=".15" stroke="#8a93a5" stroke-width="1">
-        <g transform="translate(0,0)">
-          <!-- grid -->
-          <script type="application/ecmascript"><![CDATA[
-            // draws faint grid (for looks only)
-            const svg = document.currentScript.ownerSVGElement;
-            const g = document.currentScript.parentNode;
-            for(let x=0;x<=1200;x+=60){
-              const l=document.createElementNS('http://www.w3.org/2000/svg','line');
-              l.setAttribute('x1',x); l.setAttribute('y1',0);
-              l.setAttribute('x2',x); l.setAttribute('y2',600);
-              g.appendChild(l);
-            }
-            for(let y=0;y<=600;y+=60){
-              const l=document.createElementNS('http://www.w3.org/2000/svg','line');
-              l.setAttribute('x1',0); l.setAttribute('y1',y);
-              l.setAttribute('x2',1200); l.setAttribute('y2',y);
-              g.appendChild(l);
-            }
-          ]]></script>
-        </g>
-      </g>
+      <!-- background -->
+      <rect x="0" y="0" width="1200" height="600" fill="#0e1117"/>
 
-      <!-- “building” shell -->
-      <g id="shell" fill="#161922" stroke="#232a3a" stroke-width="2">
+      <!-- building shell -->
+      <g fill="#141a24" stroke="#273049" stroke-width="2">
         <rect x="60" y="120" width="1080" height="360" rx="14"/>
       </g>
 
-      <!-- corridor -->
-      <g fill="#1b2030" stroke="#2a3246" stroke-width="2">
-        <rect x="140" y="280" width="920" height="60" rx="10"/>
-      </g>
+      <!-- main corridor -->
+      <rect x="140" y="280" width="920" height="62" rx="12" fill="#1a2030" stroke="#2a3449" stroke-width="2"/>
 
-      <!-- rooms (placeholders) -->
+      <!-- rooms -->
       <g id="rooms" fill="#1c2436" stroke="#313a52" stroke-width="2">
-        <rect id="room1-rect" x="240" y="160" width="140" height="100" rx="10"/>
-        <rect id="room2-rect" x="440" y="160" width="140" height="100" rx="10"/>
-        <rect id="conf-rect"  x="780" y="160" width="160" height="100" rx="10"/>
-        <rect id="reception-rect" x="950" y="260" width="110" height="80" rx="10"/>
-        <rect id="exit-rect" x="80" y="260" width="80" height="80" rx="10"/>
+        <rect x="240" y="160" width="140" height="100" rx="12"/><!-- Room 1 -->
+        <rect x="440" y="160" width="140" height="100" rx="12"/><!-- Room 2 -->
+        <rect x="780" y="160" width="160" height="100" rx="12"/><!-- Conference -->
+        <rect x="950" y="260" width="110" height="80"  rx="12"/><!-- Reception -->
+        <rect x="80"  y="260" width="80"  height="80"  rx="12"/><!-- Exit -->
       </g>
 
       <!-- labels -->
@@ -169,174 +154,196 @@
         <text x="97"  y="305">Exit</text>
       </g>
 
-      <!-- dynamic route + markers go here -->
-      <polyline id="route" fill="none" stroke="url(#routeGradient)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".95"/>
-      <circle id="startDot" r="9" fill="#ffd54a" filter="url(#glow)" style="display:none"/>
-      <circle id="endDot" r="9" fill="#ff2e6b" filter="url(#glow)" style="display:none"/>
+      <!-- FULL route (dim) -->
+      <path id="routeBg" fill="none" stroke="#2b3144" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+      <!-- PROGRESS route (animated) -->
+      <path id="routeFg" fill="none" stroke="url(#routeGradient)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" opacity=".98"/>
+
+      <!-- START dot -->
+      <g id="startMarker" class="pulse" style="display:none">
+        <circle id="startDot" r="8" fill="#ff2e6b"/>
+        <circle class="pulse-ring" r="12"/>
+      </g>
+
+      <!-- DESTINATION bullseye -->
+      <g id="endMarker" class="pulse" style="display:none">
+        <circle id="endDot" r="7" fill="#ffd54a"/>
+        <circle r="14" fill="none" stroke="#ffd54a" stroke-width="3" opacity=".8"/>
+      </g>
+
+      <!-- MOVING ARROW (points to direction of travel) -->
+      <g id="arrow" style="display:none" filter="url(#glow)">
+        <!-- arrow body -->
+        <polygon points="0,0 -16,-9 -16,9" fill="#ffd54a"/>
+      </g>
     </svg>
   </section>
 </div>
 
 <script>
 /* =========================
-   Minimal indoor routing demo
+   Animated indoor routing
    ========================= */
+const PX_TO_M = 0.12;     // tune for real scale
+const WALK_MPS = 1.2;
 
-const PX_TO_M = 0.12;      // 1 SVG pixel ≈ 0.12 meters (tweak for your plan scale)
-const WALK_MPS = 1.2;      // walking speed ~1.2 m/s
-
-// Key locations (node coordinates in SVG space)
+// Graph nodes (SVG coords)
 const NODES = {
-  reception: { x: 1005, y: 300, label: "Reception" },
-  lobby:     { x: 900,  y: 300, label: "Lobby" },
-  j1:        { x: 700,  y: 300, label: "Junction 1" },
-  j2:        { x: 500,  y: 300, label: "Junction 2" },
-  j3:        { x: 300,  y: 300, label: "Junction 3" },
-  exit:      { x: 120,  y: 300, label: "Exit" },
-
-  // Doors to rooms
-  room1_d:   { x: 300,  y: 260, label: "Room 1 Door" },
-  room2_d:   { x: 500,  y: 260, label: "Room 2 Door" },
-  conf_d:    { x: 860,  y: 260, label: "Conference Door" },
-
-  // Room centers (targets)
-  room1:     { x: 310,  y: 210, label: "Room 1" },
-  room2:     { x: 510,  y: 210, label: "Room 2" },
-  conference:{ x: 860,  y: 210, label: "Conference" }
+  reception:{x:1005,y:300,label:'Reception'},
+  lobby:{x:900,y:300,label:'Lobby'},
+  j1:{x:700,y:300,label:'Junction 1'},
+  j2:{x:500,y:300,label:'Junction 2'},
+  j3:{x:300,y:300,label:'Junction 3'},
+  exit:{x:120,y:300,label:'Exit'},
+  room1_d:{x:300,y:260,label:'Room 1 Door'},
+  room2_d:{x:500,y:260,label:'Room 2 Door'},
+  conf_d:{x:860,y:260,label:'Conference Door'},
+  room1:{x:310,y:210,label:'Room 1'},
+  room2:{x:510,y:210,label:'Room 2'},
+  conference:{x:860,y:210,label:'Conference'}
 };
 
-// Edges between nodes (undirected). Weights are Euclidean distance in pixels.
+// Edges (undirected)
 const EDGES = [
-  ['reception','lobby'],
-  ['lobby','j1'],
-  ['j1','j2'],
-  ['j2','j3'],
-  ['j3','exit'],
-
-  // doors to corridor
-  ['room1_d','j3'],
-  ['room2_d','j2'],
-  ['conf_d','lobby'],
-
-  // door <-> room center
-  ['room1_d','room1'],
-  ['room2_d','room2'],
-  ['conf_d','conference']
+  ['reception','lobby'],['lobby','j1'],['j1','j2'],['j2','j3'],['j3','exit'],
+  ['room1_d','j3'],['room2_d','j2'],['conf_d','lobby'],
+  ['room1_d','room1'],['room2_d','room2'],['conf_d','conference']
 ];
 
-// Build adjacency with calculated weights
-const graph = {};
-function dist(a,b){ const dx=NODES[a].x-NODES[b].x, dy=NODES[a].y-NODES[b].y; return Math.hypot(dx,dy); }
-for(const [a,b] of EDGES){
-  const w = dist(a,b);
-  graph[a] ??= []; graph[b] ??= [];
-  graph[a].push({to:b, w}); graph[b].push({to:a, w});
-}
+// Build adjacency with weights
+const G={}; function d(a,b){const dx=NODES[a].x-NODES[b].x,dy=NODES[a].y-NODES[b].y;return Math.hypot(dx,dy);}
+for(const [a,b] of EDGES){const w=d(a,b);(G[a]??=[]).push({to:b,w});(G[b]??=[]).push({to:a,w});}
 
-// Dijkstra shortest path (returns array of node keys)
-function shortestPath(start,end){
-  const Q = new Set(Object.keys(NODES));
-  const distMap = {}; const prev = {};
-  for(const k of Q){ distMap[k] = Infinity; } distMap[start]=0;
+// Dijkstra
+function shortest(start,end){
+  const Q=new Set(Object.keys(NODES));
+  const dist={},prev={}; for(const k of Q) dist[k]=Infinity; dist[start]=0;
   while(Q.size){
-    // get node in Q with smallest dist
-    let u=null, best=Infinity;
-    for(const k of Q){ if(distMap[k] < best){ best=distMap[k]; u=k; } }
-    Q.delete(u);
-    if(u===end || best===Infinity) break;
-    for(const {to,w} of (graph[u]||[])){
-      if(!Q.has(to)) continue;
-      const alt = distMap[u] + w;
-      if(alt < distMap[to]){ distMap[to]=alt; prev[to]=u; }
-    }
+    let u=null, best=Infinity; for(const k of Q) if(dist[k]<best){best=dist[k];u=k;}
+    Q.delete(u); if(u===end || best===Infinity) break;
+    for(const {to,w} of (G[u]||[])){ if(!Q.has(to)) continue; const alt=dist[u]+w; if(alt<dist[to]){dist[to]=alt; prev[to]=u;}}
   }
-  // Reconstruct
-  const path = [];
-  let u=end;
-  if(!(u in prev) && u!==start) return null;
-  while(u){ path.unshift(u); if(u===start) break; u=prev[u]; }
-  return path;
+  const path=[]; let u=end; if(!(u in prev) && u!==start) return null;
+  while(u){ path.unshift(u); if(u===start) break; u=prev[u]; } return path;
 }
 
-// DOM elements
-const map = document.getElementById('map');
-const routeEl = document.getElementById('route');
+// DOM
+const svg = document.getElementById('map');
+const routeBg = document.getElementById('routeBg');
+const routeFg = document.getElementById('routeFg');
+const startMarker = document.getElementById('startMarker');
+const endMarker = document.getElementById('endMarker');
 const startDot = document.getElementById('startDot');
 const endDot = document.getElementById('endDot');
+const arrow = document.getElementById('arrow');
+const grad = document.getElementById('routeGradient');
 const summaryEl = document.getElementById('summary');
 const stepsEl = document.getElementById('steps');
 
-function drawPath(path){
-  if(!path) { routeEl.setAttribute('points',''); startDot.style.display=endDot.style.display='none'; return; }
-  const pts = path.map(k => `${NODES[k].x},${NODES[k].y}`).join(' ');
-  routeEl.setAttribute('points', pts);
+function pathD(keys){ // M x y L x y ...
+  return keys.map((k,i)=> (i?'L':'M') + NODES[k].x + ' ' + NODES[k].y).join(' ');
+}
 
-  // Move gradient to span roughly start→end for a nice effect
-  const grad = map.querySelector('#routeGradient');
-  const a = NODES[path[0]], b = NODES[path[path.length-1]];
+// Helpers
+function meters(px){return px*PX_TO_M;}
+function timeFmt(sec){if(sec<60) return `${Math.round(sec)} sec`; const m=Math.floor(sec/60),s=Math.round(sec%60); return `${m} min${s?` ${s}s`:''}`;}
+
+let animReq=null;
+function cancelAnim(){ if(animReq){ cancelAnimationFrame(animReq); animReq=null; } }
+
+// Animate along a path element (routeFg)
+function animateAlong(pathEl, seconds){
+  const total = pathEl.getTotalLength();
+
+  // Prepare drawing animation
+  routeFg.style.strokeDasharray = total;
+  routeFg.style.strokeDashoffset = total;
+
+  // Show moving arrow
+  arrow.style.display = 'block';
+
+  const t0 = performance.now();
+  const dur = Math.min(Math.max(seconds*0.9, 1.2), 8.5); // clamp 1.2s–8.5s
+
+  function frame(now){
+    const t = Math.min((now - t0)/ (dur*1000), 1);           // 0..1
+    const ease = t<.5 ? 2*t*t : -1+(4-2*t)*t;               // easeInOutQuad
+    const len = total * ease;
+
+    // Reveal progress
+    routeFg.style.strokeDashoffset = total - len;
+
+    // Move arrow to current point
+    const p = pathEl.getPointAtLength(Math.max(len-0.1, 0));
+    const p2 = pathEl.getPointAtLength(Math.min(len+0.1, total));
+    const angle = Math.atan2(p2.y - p.y, p2.x - p.x) * 180/Math.PI;
+    arrow.setAttribute('transform', `translate(${p.x},${p.y}) rotate(${angle})`);
+
+    if(t<1){ animReq=requestAnimationFrame(frame); } else { animReq=null; }
+  }
+  animReq=requestAnimationFrame(frame);
+}
+
+function plan(from,to){
+  cancelAnim();
+
+  const keys = shortest(from,to);
+  if(!keys){ summaryEl.textContent='No route found.'; stepsEl.innerHTML=''; routeBg.setAttribute('d',''); routeFg.setAttribute('d',''); arrow.style.display='none'; startMarker.style.display=endMarker.style.display='none'; return; }
+
+  // Build path data and lengths
+  const dStr = pathD(keys);
+  routeBg.setAttribute('d', dStr);
+  routeFg.setAttribute('d', dStr);
+
+  // Gradient direction ↔ start→end
+  const a=NODES[keys[0]], b=NODES[keys[keys.length-1]];
   grad.setAttribute('x1', a.x); grad.setAttribute('y1', a.y);
   grad.setAttribute('x2', b.x); grad.setAttribute('y2', b.y);
 
-  // Start/End marker dots
-  startDot.setAttribute('cx', a.x); startDot.setAttribute('cy', a.y);
-  endDot.setAttribute('cx', b.x);   endDot.setAttribute('cy', b.y);
-  startDot.style.display = endDot.style.display = 'block';
-}
+  // Markers (START = pink dot + ring, END = bullseye)
+  startMarker.style.display = endMarker.style.display = 'block';
+  startMarker.setAttribute('transform', `translate(${a.x},${a.y})`);
+  endMarker.setAttribute('transform', `translate(${b.x},${b.y})`);
 
-function metersFromPixels(px){ return px * PX_TO_M; }
-function formatTime(seconds){
-  if(seconds < 60) return `${Math.round(seconds)} sec`;
-  const m = Math.floor(seconds/60), s = Math.round(seconds%60);
-  return `${m} min${s?` ${s}s`:''}`;
-}
-function plan(startKey, endKey){
-  const raw = shortestPath(startKey,endKey);
-  if(!raw){ summaryEl.textContent = 'No route found.'; stepsEl.innerHTML=''; drawPath(null); return; }
+  // Distance & ETA
+  let pxLen=0; for(let i=1;i<keys.length;i++) pxLen += d(keys[i-1],keys[i]);
+  const m = meters(pxLen), sec = m / WALK_MPS;
+  summaryEl.innerHTML = `<b>${NODES[from].label}</b> → <b>${NODES[to].label}</b> · ${m.toFixed(0)} m · ${timeFmt(sec)}`;
 
-  // Sum length
-  let pxLen=0; for(let i=1;i<raw.length;i++) pxLen += dist(raw[i-1], raw[i]);
-  const meters = metersFromPixels(pxLen);
-  const seconds = meters / WALK_MPS;
-
-  // UI
-  summaryEl.innerHTML = `<b>${NODES[startKey].label}</b> → <b>${NODES[endKey].label}</b> · <span class="small">${meters.toFixed(0)} m · ${formatTime(seconds)}</span>`;
-  stepsEl.innerHTML = '';
-  // crude “step list” = nodes along the way
-  for(let i=0;i<raw.length;i++){
-    const k = raw[i], nxt = raw[i+1];
+  // Steps list (simple node-to-node)
+  stepsEl.innerHTML='';
+  for(let i=0;i<keys.length;i++){
+    const here = keys[i], nxt = keys[i+1];
     const div = document.createElement('div'); div.className='route';
-    let title = (i===0?'Start: ': i===raw.length-1?'Arrive: ':' → ');
-    div.innerHTML = `<h4>${title}${NODES[k].label}</h4>` + (nxt?`<div class="small">Proceed to <b>${NODES[nxt].label}</b></div>`:'');
+    const title = i===0?'START: ': i===keys.length-1?'ARRIVE: ':'→ ';
+    div.innerHTML = `<h4>${title}${NODES[here].label}</h4>` + (nxt?`<div class="small">Proceed to <b>${NODES[nxt].label}</b></div>`:'');
     stepsEl.appendChild(div);
   }
 
-  drawPath(raw);
+  // Animate the progress and the moving arrow
+  animateAlong(routeFg, sec);
 }
 
 // Controls
 const fromSel = document.getElementById('from');
 const toSel   = document.getElementById('to');
-document.getElementById('routeBtn').addEventListener('click', ()=> plan(fromSel.value, toSel.value));
+document.getElementById('routeBtn').addEventListener('click', ()=> plan(fromSel.value,toSel.value));
 document.getElementById('swap').addEventListener('click', ()=>{
   const a=fromSel.value,b=toSel.value; fromSel.value=b; toSel.value=a; plan(fromSel.value,toSel.value);
 });
-document.querySelectorAll('.chip').forEach(chip=>{
-  chip.addEventListener('click', ()=>{
-    fromSel.value = chip.dataset.from;
-    toSel.value   = chip.dataset.to;
-    plan(fromSel.value,toSel.value);
-  });
+document.querySelectorAll('.chip').forEach(c=> c.addEventListener('click', ()=>{
+  fromSel.value=c.dataset.from; toSel.value=c.dataset.to; plan(fromSel.value,toSel.value);
+}));
+
+// Dev helper: log SVG coords on click (useful when tracing real map)
+svg.addEventListener('click', (e)=>{
+  const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+  console.log('SVG coords:', Math.round(p.x), Math.round(p.y));
 });
 
-// Map click = show coordinates (handy when you later trace your real plan)
-map.addEventListener('click', (e)=>{
-  const pt = map.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
-  const ctm = map.getScreenCTM().inverse(); const svgPt = pt.matrixTransform(ctm);
-  console.log('SVG coords:', Math.round(svgPt.x), Math.round(svgPt.y));
-});
-
-// Default view: Reception → Room 1
-plan('reception','room1');
+// Default demo: Lobby → Room 1
+fromSel.value='lobby'; toSel.value='room1'; plan('lobby','room1');
 </script>
 </body>
 </html>
