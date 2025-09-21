@@ -87,6 +87,67 @@
   @media (pointer:coarse){
     select,.chip{font-size:1.05rem;padding:16px}
   }
+
+/* =============================
+   Responsive & 8K-ready tweaks
+   ============================= */
+html, body { height: 100dvh; }
+html { font-size: clamp(14px, 0.9vw, 22px); }
+
+.app{
+  /* Sidebar scales between 360–520px, ~22vw on ultrawide */
+  grid-template-columns: minmax(280px, clamp(360px, 22vw, 520px)) 1fr;
+  min-height: 100dvh;
+}
+
+.sidebar{
+  padding: max(20px, calc(16px + env(safe-area-inset-top))) max(20px, calc(16px + env(safe-area-inset-right))) max(20px, calc(16px + env(safe-area-inset-bottom))) max(20px, calc(16px + env(safe-area-inset-left)));
+}
+
+.title{ font-size: clamp(1rem, 1.6vw, 1.8rem); }
+.panel{ border-radius: clamp(12px, 1.2vw, 18px); }
+label{ font-size: clamp(.9rem, 1.1vw, 1rem); }
+
+select{ font-size: clamp(0.95rem, 1.1vw, 1.05rem); }
+.swap{ font-size: clamp(1.1rem, 1.5vw, 1.25rem); }
+
+.routes{ max-height: min(38vh, 42svh); }
+.chip{ font-size: clamp(.9rem, 1.1vw, 1rem); }
+
+/* Scale SVG label text on huge displays */
+#map text{ font-size: clamp(12px, 1.1vw, 24px); }
+
+/* Improve performance and accessibility */
+@media (prefers-reduced-motion: reduce){
+  .map-wrap{ animation: none !important; }
+  #startDot{ animation: none !important; }
+}
+
+/* Tablet / Narrow laptop: stack sidebar above map */
+@media (max-width: 1024px){
+  .app{ display: grid; grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+  .sidebar{ position: sticky; top: 0; z-index: 2; }
+  .map-wrap{ min-height: 60vh; }
+}
+
+/* Phones */
+@media (max-width: 640px){
+  .sidebar{ gap: 12px; }
+  .row{ flex-direction: column; }
+  .chips{ gap: 6px; }
+  .legend, .toolbar{ font-size: .85rem; }
+}
+
+/* Ultra-wide (>= 3840px): gently increase UI density without going huge */
+@media (min-width: 3840px){
+  .panel{ padding: clamp(16px, 1vw, 22px); }
+  .legend, .toolbar{ font-size: clamp(.9rem, 0.9vw, 1.1rem); }
+  .routes{ max-height: 44vh; }
+}
+
+/* Ensure the SVG never causes overflow on very wide screens */
+.map{ width: 100%; height: 100%; max-width: 100vw; max-height: 100dvh; }
+
 </style>
 </head>
 <body>
