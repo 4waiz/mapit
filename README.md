@@ -25,8 +25,3 @@ It allows users to **search for stores, view maps, and get directions** in a sim
 - **Tools:** Git, VS Code  
 
 ---
-
-## 🚀 Getting Started  
-1. Clone this repo:  
-   ```bash
-   git clone https://github.com/yourusername/mapit.git
