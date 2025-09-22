@@ -3,24 +3,33 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EDGE LIF — Simple Wayfinder</title>
+<title>EDGE LIF — Wayfinder (User & Developer Modes)</title>
 <style>
-  :root{--bg:#0b111b;--panel:#0f1626;--b:#22314e;--text:#eaf1ff;--muted:#9fb0cc;--pink:#ff61d8;--cyan:#6af0ff;}
-  *{box-sizing:border-box} html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:16px/1.45 Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+  :root{
+    --bg:#0b111b;--panel:#0f1626;--b:#22314e;--text:#eaf1ff;--muted:#9fb0cc;
+    --pink:#ff61d8;--cyan:#6af0ff;--accent:#7ee787;--warn:#ffb86b;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:16px/1.45 Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
   .wrap{max-width:1400px;margin:0 auto;padding:14px}
   .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-  .brand{font-weight:900;letter-spacing:.04em}
   .brand-logo{height:56px;display:block}
-  .panel{display:grid;grid-template-columns:minmax(320px,360px) 1fr;gap:12px}
+  .panel{display:grid;grid-template-columns:minmax(320px,380px) 1fr;gap:12px}
   .card{background:var(--panel);border:1px solid var(--b);border-radius:14px;padding:14px}
   label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
-  select,button{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--b);background:#0e1524;color:var(--text)}
+  select,button,.pill{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--b);background:#0e1524;color:var(--text)}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
   .note{font-size:.9rem;color:var(--muted);margin-top:8px}
   .mapBox{position:relative}
   svg.map{width:100%;height:70vh;max-height:80dvh;display:block;border-radius:14px}
   .hint{font-size:.9rem;color:var(--muted)}
+  .modes{display:flex;gap:8px;margin-bottom:10px}
+  .modeBtn{flex:1;text-align:center;cursor:pointer;border:1px solid var(--b);background:#0e1524;padding:10px;border-radius:10px}
+  .modeBtn[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:1px}
+  .pill{display:flex;align-items:center;gap:8px}
+  .pill small{opacity:.7}
+  .disabled{opacity:.5;pointer-events:none}
   @media (max-width:980px){.panel{grid-template-columns:1fr} .actions{grid-template-columns:repeat(2,1fr)} .row{grid-template-columns:1fr} }
 </style>
 </head>
@@ -29,42 +38,36 @@
   <div class="top">
     <img src="logo.png" alt="EDGE LIF logo" class="brand-logo">
   </div>
+
   <div class="panel">
     <div class="card">
+      <div class="modes" role="tablist" aria-label="Mode switch">
+        <button id="logoutBtn" class="modeBtn" role="tab" aria-selected="false" aria-pressed="false" style="display:none">Logout</button>
+        <button id="userModeBtn" class="modeBtn" role="tab" aria-selected="true" aria-pressed="true">User mode</button>
+        <button id="devModeBtn" class="modeBtn" role="tab" aria-selected="false" aria-pressed="false">Developer mode</button>
+      </div>
+
       <div class="row">
         <div>
-          <label>From</label>
-          <select id="from">
-            <option value="" selected>— Select —</option>
-            <option value="reception">Reception</option>
-            <option value="lobby">Lobby</option>
-            <option value="room1">Training A</option>
-            <option value="room2">Training B</option>
-            <option value="conference">Conference</option>
-            <option value="exit">Exit</option>
-          </select>
+          <label id="fromLbl">From</label>
+          <select id="from"></select>
+          <div id="fromPill" class="pill" style="display:none" aria-live="polite">📍 <strong>You are here</strong> <small>(fixed)</small></div>
         </div>
         <div>
           <label>To</label>
-          <select id="to">
-            <option value="" selected>— Select —</option>
-            <option value="exit">Exit</option>
-            <option value="reception">Reception</option>
-            <option value="lobby">Lobby</option>
-            <option value="room1">Training A</option>
-            <option value="room2">Training B</option>
-            <option value="conference">Conference</option>
-          </select>
+          <select id="to"></select>
         </div>
       </div>
-      <div class="actions">
+
+      <div id="devActions" class="actions">
         <button id="draw">Draw route</button>
         <button id="undo" disabled>Undo point</button>
         <button id="save" disabled>Save for pair</button>
         <button id="clearPair" disabled>Clear saved pair</button>
         <button id="clearAll">Clear ALL saved</button>
       </div>
-      <div class="note" id="status">Pick From & To, then click "Draw route" and trace the corridor. Press Save when done.</div>
+
+      <div class="note" id="status">In <strong>User mode</strong>: choose your destination. In <strong>Developer mode</strong>: pick From/To, draw and save routes for any pair.</div>
     </div>
 
     <div class="card mapBox">
@@ -77,9 +80,9 @@
             <feGaussianBlur stdDeviation="4" result="b"/>
             <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
-          </defs>
-          <image href="image.png" x="0" y="0" width="1307" height="768" opacity=".95"/>
-          <!-- saved route -->
+        </defs>
+        <image href="image.png" x="0" y="0" width="1307" height="768" opacity=".95"/>
+        <!-- saved route -->
         <path id="routeBg" d="" fill="none" stroke="#22314e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
         <path id="route" d="" fill="none" stroke="url(#g)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
         <!-- drawing preview -->
@@ -95,6 +98,46 @@
 </div>
 
 <script>
+
+function requireLogin(callback){
+  const u = prompt("Enter username:");
+  const p = prompt("Enter password:");
+  if(u==="awaiz" && p==="edge1234"){
+    localStorage.setItem("wf_dev_logged_in", "true");
+    callback(true);
+  }else{
+    alert("Invalid credentials");
+    callback(false);
+  }
+}
+
+/* ---------- Config ---------- */
+const LOCATIONS = [
+  "You are here",
+  "Creative Space",
+  "Edge Digital Factory",
+  "Analytics Area",
+  "Office 1",
+  "Office 2",
+  "Reception",
+  "VIP meeting room",
+  "Smart learning Factory",
+  "lean Area",
+  "Auditorium",
+  "Pantry 2",
+  "Training Room 1",
+  "Training Room 2",
+  "Training Room 3",
+  "Pantry 1",
+  "Male Toilet",
+  "Female Toilet",
+  "Lounge",
+  "Male Prayer Room",
+  "Female Prayer Room"
+];
+const YOU_KEY = "You are here";
+
+/* ---------- DOM ---------- */
 const svg = document.getElementById('map');
 const route = document.getElementById('route');
 const routeBg = document.getElementById('routeBg');
@@ -108,19 +151,75 @@ const undoBtn = document.getElementById('undo');
 const saveBtn = document.getElementById('save');
 const clearPairBtn = document.getElementById('clearPair');
 const clearAllBtn = document.getElementById('clearAll');
+const devActions = document.getElementById('devActions');
+const userModeBtn = document.getElementById('userModeBtn');
+const devModeBtn = document.getElementById('devModeBtn');
+const fromLbl = document.getElementById('fromLbl');
+const fromPill = document.getElementById('fromPill');
 
-// storage
-let ROUTES = JSON.parse(localStorage.getItem('wf_routes')||'{}');
-function pk(){ return fromSel.value && toSel.value ? fromSel.value + '->' + toSel.value : null; }
+/* ---------- Storage ---------- */
+let ROUTES = JSON.parse(localStorage.getItem('wf_routes_v2')||'{}');
+function keyFor(a,b){ return a + '->' + b; }
 
-// drawing state
+/* ---------- Mode ---------- */
+let mode = localStorage.getItem('wf_mode') || 'user';
+function setMode(m){
+  mode = m;
+  localStorage.setItem('wf_mode', m);
+  userModeBtn.setAttribute('aria-pressed', m==='user');
+  devModeBtn.setAttribute('aria-pressed', m==='dev');
+  userModeBtn.setAttribute('aria-selected', m==='user');
+  devModeBtn.setAttribute('aria-selected', m==='dev');
+
+  devActions.style.display = m==='dev' ? 'grid' : 'none';
+  fromSel.style.display = m==='dev' ? 'block' : 'none';
+  fromLbl.textContent = m==='dev' ? 'From' : 'From (fixed)';
+  fromPill.style.display = m==='dev' ? 'none' : 'flex';
+  if(m==='user'){
+    fromSel.value = YOU_KEY;
+    fromSel.disabled = true;
+    statusEl.innerHTML = 'User mode: pick your destination. This kiosk assumes <strong>You are here</strong> as the starting point.';
+  }else{
+    fromSel.disabled = false;
+    statusEl.textContent = 'Developer mode: select From/To, draw the corridor path and save.';
+  }
+  render();
+}
+userModeBtn.addEventListener('click', ()=>setMode('user'));
+devModeBtn.addEventListener('click', ()=>{
+  if(localStorage.getItem("wf_dev_logged_in")=="true"){ setMode("dev"); logoutBtn.style.display="block"; } else { requireLogin(ok=>{ if(ok){ setMode("dev"); logoutBtn.style.display="block"; } }); }
+});
+
+/* ---------- Populate selects ---------- */
+function fillSelects(){
+  // From
+  fromSel.innerHTML = '';
+  LOCATIONS.forEach(name=>{
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    fromSel.appendChild(opt);
+  });
+  // To
+  toSel.innerHTML='';
+  LOCATIONS.filter(n=>n!==YOU_KEY).forEach(name=>{
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    toSel.appendChild(opt);
+  });
+  // defaults
+  fromSel.value = YOU_KEY;
+  toSel.value = '';
+}
+fillSelects();
+
+/* ---------- Drawing state ---------- */
 let drawing=false, pts=[];
 
-function setStatus(msg){ statusEl.textContent = msg; }
+function setStatus(msg){ statusEl.innerHTML = msg; }
 function setPreview(){ preview.setAttribute('points', pts.map(p=>p.join(',')).join(' ')); }
 function updatePairButtons(){
   const hasPair = !!(fromSel.value && toSel.value);
-  clearPairBtn.disabled = !hasPair || !ROUTES[pk()];
+  clearPairBtn.disabled = !(hasPair && ROUTES[keyFor(fromSel.value,toSel.value)]);
 }
 
 function roundedPath(points, r){
@@ -145,14 +244,20 @@ function roundedPath(points, r){
 }
 
 function render(){
-  const key = pk();
   arrow.style.display='none';
   route.setAttribute('d',''); routeBg.setAttribute('d','');
-  if(!key || !ROUTES[key]){ setStatus('No saved route for this pair. Click "Draw route" to create one.'); updatePairButtons(); return; }
-  const pts = ROUTES[key];
-  const d = roundedPath(pts, 20);
+  const from = mode==='user' ? YOU_KEY : fromSel.value;
+  const to = toSel.value;
+  if(!(from && to)){ updatePairButtons(); return; }
+  const k = keyFor(from,to);
+  const saved = ROUTES[k];
+  if(!saved){
+    setStatus((mode==='user' ? 'No route found. ' : '') + 'Select another pair or (in Developer mode) click "Draw route" to create one.');
+    updatePairButtons(); return;
+  }
+  const d = roundedPath(saved, 20);
   route.setAttribute('d', d); routeBg.setAttribute('d', d);
-  setStatus('Showing saved route. Click "Draw route" to update.');
+  setStatus('Showing saved route for <strong>'+from+'</strong> → <strong>'+to+'</strong>.');
   updatePairButtons();
   animateArrow();
 }
@@ -163,7 +268,10 @@ function animateArrow(){
   route.style.strokeDasharray = total;
   route.style.strokeDashoffset = total;
   const t0 = performance.now(), dur = 2200;
-  function frame(now){ const t = Math.min((now-t0)/dur, 1); const len = total*(0.2 + 0.8*t); route.style.strokeDashoffset = total-len;
+  function frame(now){
+    const t = Math.min((now-t0)/dur, 1);
+    const len = total*(0.2 + 0.8*t);
+    route.style.strokeDashoffset = total-len;
     const p  = route.getPointAtLength(Math.max(0,len-1));
     const p2 = route.getPointAtLength(Math.min(total,len+1));
     const ang = Math.atan2(p2.y-p.y, p2.x-p.x)*180/Math.PI;
@@ -174,15 +282,17 @@ function animateArrow(){
   requestAnimationFrame(frame);
 }
 
-// UI events
+/* ---------- UI events ---------- */
 [fromSel,toSel].forEach(el=> el.addEventListener('change', render));
 
-drawBtn.addEventListener('click', ()=>{
+function beginDrawing(){
+  if(mode!=='dev'){ return; }
   if(!(fromSel.value && toSel.value)){ setStatus('Pick From & To first.'); return; }
   drawing=true; pts=[]; preview.style.display='block'; setPreview();
   undoBtn.disabled=false; saveBtn.disabled=false;
   setStatus('Drawing: click along the corridor. Save when done. (Esc to cancel)');
-});
+}
+document.getElementById('draw').addEventListener('click', beginDrawing);
 
 undoBtn.addEventListener('click', ()=>{
   if(!drawing || pts.length===0) return;
@@ -190,30 +300,38 @@ undoBtn.addEventListener('click', ()=>{
 });
 
 function savePair(){
-  const key = pk();
-  if(!key || pts.length<2){ setStatus('Add at least 2 points.'); return; }
-  ROUTES[key] = pts.slice();
-  localStorage.setItem('wf_routes', JSON.stringify(ROUTES));
+  if(mode!=='dev'){ return; }
+  const k = keyFor(fromSel.value, toSel.value);
+  if(pts.length<2){ setStatus('Add at least 2 points.'); return; }
+  ROUTES[k] = pts.slice();
+  localStorage.setItem('wf_routes_v2', JSON.stringify(ROUTES));
   drawing=false; preview.style.display='none'; undoBtn.disabled=true; saveBtn.disabled=true;
-  setStatus('Saved.'); render();
+  setStatus('Saved route for <strong>'+fromSel.value+'</strong> → <strong>'+toSel.value+'</strong>.');
+  render();
 }
 saveBtn.addEventListener('click', savePair);
 
 clearPairBtn.addEventListener('click', ()=>{
-  const key = pk(); if(!key) return;
-  delete ROUTES[key]; localStorage.setItem('wf_routes', JSON.stringify(ROUTES));
+  if(mode!=='dev') return;
+  const k = keyFor(fromSel.value,toSel.value);
+  delete ROUTES[k];
+  localStorage.setItem('wf_routes_v2', JSON.stringify(ROUTES));
   setStatus('Cleared saved route for this pair.'); render();
 });
 
 clearAllBtn.addEventListener('click', ()=>{
+  if(mode!=='dev') return;
   if(!confirm('Delete ALL saved routes?')) return;
-  ROUTES = {}; localStorage.removeItem('wf_routes');
+  ROUTES = {}; localStorage.removeItem('wf_routes_v2');
   setStatus('All saved routes cleared.'); render();
 });
 
 // drawing on svg
 window.addEventListener('keydown', (e)=>{
-  if(e.key==='Escape' && drawing){ drawing=false; preview.style.display='none'; undoBtn.disabled=true; saveBtn.disabled=true; setStatus('Canceled drawing.'); }
+  if(e.key==='Escape' && drawing){
+    drawing=false; preview.style.display='none'; undoBtn.disabled=true; saveBtn.disabled=true;
+    setStatus('Canceled drawing.');
+  }
 });
 svg.addEventListener('click', (e)=>{
   if(!drawing) return;
@@ -222,7 +340,17 @@ svg.addEventListener('click', (e)=>{
   pts.push([Math.round(p.x), Math.round(p.y)]); setPreview();
 });
 
-// initial
+
+const logoutBtn = document.getElementById('logoutBtn');
+logoutBtn.addEventListener('click', ()=>{
+  localStorage.removeItem('wf_dev_logged_in');
+  alert("Logged out from Developer mode.");
+  setMode('user');
+  logoutBtn.style.display='none';
+});
+
+// init
+setMode(mode);
 render();
 </script>
 </body>
