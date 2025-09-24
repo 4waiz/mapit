@@ -1,365 +1,439 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>EDGE LIF — Wayfinder (User & Developer Modes)</title>
-<style>
-  :root{
-    --bg:#0b111b;--panel:#0f1626;--b:#22314e;--text:#eaf1ff;--muted:#9fb0cc;
-    --pink:#ff61d8;--cyan:#6af0ff;--accent:#7ee787;--warn:#ffb86b;
-  }
-  *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:16px/1.45 Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
-  .wrap{max-width:1400px;margin:0 auto;padding:14px}
-  .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-  .brand-logo{height:56px;display:block}
-  .panel{display:grid;grid-template-columns:minmax(320px,380px) 1fr;gap:12px}
-  .card{background:var(--panel);border:1px solid var(--b);border-radius:14px;padding:14px}
-  label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
-  select,button,.pill{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--b);background:#0e1524;color:var(--text)}
-  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .actions{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
-  .note{font-size:.9rem;color:var(--muted);margin-top:8px}
-  .mapBox{position:relative}
-  svg.map{width:100%;height:70vh;max-height:80dvh;display:block;border-radius:14px}
-  .hint{font-size:.9rem;color:var(--muted)}
-  .modes{display:flex;gap:8px;margin-bottom:10px}
-  .modeBtn{flex:1;text-align:center;cursor:pointer;border:1px solid var(--b);background:#0e1524;padding:10px;border-radius:10px}
-  .modeBtn[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:1px}
-  .pill{display:flex;align-items:center;gap:8px}
-  .pill small{opacity:.7}
-  .disabled{opacity:.5;pointer-events:none}
-  @media (max-width:980px){.panel{grid-template-columns:1fr} .actions{grid-template-columns:repeat(2,1fr)} .row{grid-template-columns:1fr} }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wayfinding Map — EDGE Style</title>
+  <style>
+    :root{
+      --edge-orange:#ff6a00;
+      --edge-orange-d:#e65f00;
+      --panel:#15181d;
+      --panel-ink:#c7d0dc;
+      --border:#262c34;
+      --ink:#eef3fb;
+      --muted:#8a96a8;
+      --ink-soft:#c0c8d5;
+      --route-bg:#2a3038;
+      --logoH: 80px; /* user-mode logo height */
+
+      /* ==== Animated Nebula Gradient (your colors) ==== */
+      --nebula-start:#1c1d24;
+      --nebula-mid-orange:#4a2a1a;
+      --nebula-mid-grey:#2e3034;
+      --nebula-end:#0c0d12;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; color:var(--ink);
+      font:14px/1.5 Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      overflow:hidden; /* lock page scroll */
+      background: conic-gradient(at 0% 50%,
+        var(--nebula-start) 0%,
+        var(--nebula-mid-orange) 20%,
+        var(--nebula-start) 35%,
+        var(--nebula-mid-grey) 65%,
+        var(--nebula-start) 80%,
+        var(--nebula-end) 100%);
+      background-size:200% 200%;
+      animation: panBackground 60s linear infinite alternate;
+    }
+    @keyframes panBackground{
+      0%{background-position:0% 0%}
+      100%{background-position:100% 100%}
+    }
+
+    /* ==== Mesh canvas sits under everything ==== */
+    .bg-mesh{position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none}
+    #mesh{display:block; width:100%; height:100%}
+
+    .app{display:grid;grid-template-rows:auto 1fr auto;min-height:100vh;height:100vh; position:relative; z-index:1}
+
+    /* Header (hidden in user mode) */
+    header{
+      display:flex;gap:14px;align-items:center;justify-content:space-between;position:sticky;
+      padding:18px 16px;border-bottom:1px solid var(--border);background:#0f1318;top:0;z-index:5
+    }
+    .brand{display:flex;align-items:center;gap:10px;position:absolute;left:50%;transform:translateX(-50%);pointer-events:none}
+    .logo-img{height:80px;width:auto;display:block;object-fit:contain}
+
+    /* Overlay logo for USER mode */
+    .user-logo{
+      position:fixed; top:10px; left:50%; transform:translateX(-50%);
+      height:var(--logoH); z-index:4; display:none; pointer-events:none;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.4));
+    }
+    body.user-only .user-logo{display:block;}
+
+    /* Floating "Developer" button (only in user mode) */
+    .dev-toggle{
+      position:fixed; right:16px; bottom:16px; z-index:5; display:none;
+      background:#141a22; color:#fff; border:1px solid var(--border);
+      border-radius:999px; padding:10px 14px; cursor:pointer;
+      box-shadow:0 4px 18px rgba(0,0,0,.35);
+    }
+    .dev-toggle:hover{background:#0f141b}
+    body.user-only .dev-toggle{display:flex; align-items:center; gap:8px}
+
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .chip{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:999px;padding:4px 8px;background:#131920;gap:6px;color:var(--ink-soft)}
+    label.switch{display:inline-grid;grid-template-columns:1fr 1fr;gap:2px;background:#0e1318;border:1px solid var(--border);border-radius:999px;overflow:hidden}
+    label.switch input{display:none}
+    label.switch span{padding:6px 12px;cursor:pointer;user-select:none;color:var(--ink-soft)}
+    label.switch input:checked + span{background:#141a22;color:#fff;}
+    .status{color:var(--muted)}
+
+    .btn{appearance:none;border:1px solid var(--border);border-radius:10px;background:#141a22;color:var(--ink);padding:8px 12px;cursor:pointer}
+    .btn:hover{background:#0f141b}
+    .btn[disabled]{opacity:.45;cursor:not-allowed}
+    .btn.primary{background:#ff6a00;border-color:#ff6a00;color:#111}
+    .btn.primary:hover{background:#e65f00}
+    .btn.warn{background:#2b1a00;border-color:#3a2300;color:#ffb266}
+    .btn.danger{background:#2a0d0d;border-color:#3a1414;color:#ff8f8f}
+
+    .layout{display:grid;grid-template-columns:320px 1fr;gap:16px;padding:16px;min-height:0;overflow:hidden}
+    @media (max-width: 980px){ .layout{grid-template-columns:1fr} }
+
+    aside{background:#15181d;border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto;color:#c7d0dc}
+    aside h3{margin:6px 0 2px;font-size:12px;color:#cbd5e1;text-transform:uppercase;letter-spacing:.14em}
+    .field{display:flex;flex-direction:column;gap:6px}
+    select,input[type="text"]{width:100%;background:#0f141b;border:1px solid var(--border);color:#e5eefc;border-radius:10px;padding:8px}
+    .vsep{height:1px;background:var(--border);margin:6px 0}
+    .hint{color:#93a1b6;font-size:12px}
+    .stack{display:flex;flex-direction:column;gap:6px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .hidden{display:none !important}
+
+    /* Map */
+    .mapwrap{background:transparent;border:1px solid var(--border);border-radius:14px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:10px;min-height:0;height:100%}
+    .mapbar{display:flex;justify-content:space-between;align-items:center;color:#aeb8c6}
+    svg{width:100%;height:100%;min-height:0;border-radius:10px;background:transparent;flex:1 1 auto}
+
+    /* Route & arrow */
+    #routeBg{stroke:var(--route-bg);stroke-width:12;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    #route{stroke:url(#rainbowGrad);stroke-width:4;fill:none;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 6px rgba(255,106,0,.25));stroke-dasharray:10 12;animation:dash 1.2s linear infinite}
+    @keyframes dash{to{stroke-dashoffset:-220}}
+    #draft{stroke:#9aa9be;stroke-dasharray:6 6;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+    #arrow{filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
+    #arrow .head{fill:#ff6a00;stroke:#111;stroke-width:1}
+    #arrow .tail{fill:#fff;opacity:.9}
+    #arrow .pulse{fill:none;stroke:#ff6a00;stroke-width:2;opacity:.5}
+
+    footer.small{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;color:#9fb0c7;border-top:1px solid var(--border);background:#0f1318}
+
+    /* USER mode: map only, leave a safe gap for logo */
+    body.user-only header, body.user-only aside, body.user-only footer, body.user-only .mapbar{display:none!important}
+    body.user-only .layout{grid-template-columns:1fr; padding:calc(var(--logoH) + 16px) 0 0 0}
+    body.user-only .mapwrap{border:none;border-radius:0;padding:0}
+    body.user-only svg{border-radius:0}
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="top">
-    <img src="logo.png" alt="EDGE LIF logo" class="brand-logo">
-  </div>
+  <!-- background mesh under content -->
+  <div class="bg-mesh"><canvas id="mesh"></canvas></div>
 
-  <div class="panel">
-    <div class="card">
-      <div class="modes" role="tablist" aria-label="Mode switch">
-        <button id="logoutBtn" class="modeBtn" role="tab" aria-selected="false" aria-pressed="false" style="display:none">Logout</button>
-        <button id="userModeBtn" class="modeBtn" role="tab" aria-selected="true" aria-pressed="true">User mode</button>
-        <button id="devModeBtn" class="modeBtn" role="tab" aria-selected="false" aria-pressed="false">Developer mode</button>
-      </div>
+  <!-- Visible only in USER mode -->
+  <img src="logo.png" alt="Logo" class="user-logo" />
+  <button class="dev-toggle" id="devToggle" title="Switch to Developer mode">🛠️ Developer</button>
 
+  <div class="app">
+    <header>
+      <div class="brand"><img src="logo.png" alt="Logo" class="logo-img" onerror="this.style.display='none'"></div>
       <div class="row">
-        <div>
-          <label id="fromLbl">From</label>
-          <select id="from"></select>
-          <div id="fromPill" class="pill" style="display:none" aria-live="polite">📍 <strong>You are here</strong> <small>(fixed)</small></div>
+        <div class="chip">
+          <strong style="margin-right:6px">Mode</strong>
+          <label class="switch">
+            <input type="radio" name="mode" id="modeDev"><span>Developer</span>
+            <input type="radio" name="mode" id="modeUser" checked><span>User</span>
+          </label>
+          <button class="btn" id="logoutDev" title="Lock Developer mode">Log out</button>
         </div>
-        <div>
-          <label>To</label>
-          <select id="to"></select>
+        <div id="status" class="status">User mode: click a labeled area to go there. Start is <strong>You are here</strong>.</div>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside id="devPanel" class="hidden">
+        <h3>Locations</h3>
+        <div class="grid">
+          <button class="btn" id="addPoint">+ Add point</button>
+          <button class="btn" id="setHere">Set “You are here”</button>
         </div>
-      </div>
+        <div class="vsep"></div>
+        <div class="field"><label for="fromSel">From</label><select id="fromSel"></select></div>
+        <div class="field"><label for="toSel">To</label><select id="toSel"></select></div>
+        <div class="grid"><button class="btn" id="btnDraw">Draw path</button><button class="btn" id="btnUndo" disabled>Undo</button></div>
+        <div class="grid"><button class="btn primary" id="btnSave" disabled>Save route</button><button class="btn danger" id="btnDelete">Delete route</button></div>
+        <div class="vsep"></div>
+        <div class="grid"><button class="btn" id="btnExport">Export JSON</button><label class="btn" for="importFile">Import JSON</label><input id="importFile" class="hidden" type="file" accept="application/json" /></div>
+        <div class="grid"><button class="btn warn" id="btnClearAll">Clear all</button><button class="btn" id="btnListRoutes">List routes</button></div>
+        <div class="stack"><div class="hint">Tip: While drawing, click to add points. Press <span class="kbd">Enter</span> or click <em>Save route</em> to finish. <span class="kbd">Esc</span> cancels.</div></div>
+      </aside>
 
-      <div id="devActions" class="actions">
-        <button id="draw">Draw route</button>
-        <button id="undo" disabled>Undo point</button>
-        <button id="save" disabled>Save for pair</button>
-        <button id="clearPair" disabled>Clear saved pair</button>
-        <button id="clearAll">Clear ALL saved</button>
-      </div>
+      <main class="mapwrap">
+        <div class="mapbar">
+          <div class="legend"><span class="pill">Map</span><span>Click labels in <strong>User</strong> mode to navigate.</span></div>
+          <div class="legend"><span class="pill">Pins</span><span class="pill">You are here</span></div>
+        </div>
 
-      <div class="note" id="status">In <strong>User mode</strong>: choose your destination. In <strong>Developer mode</strong>: pick From/To, draw and save routes for any pair.</div>
-      <div style="margin-top:600px; font-size:0.85rem; text-align:center; color:var(--muted);">
-  Created by 
-  <a href="https://www.linkedin.com/in/awaiz-ahmed/" target="_blank" 
-     style="color:var(--accent); text-decoration:none;">
-    Awaiz Ahmed
-  </a>
-</div>
+        <!-- SVG map: viewBox set dynamically to match image size -->
+        <svg id="svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <!-- animated rainbow gradient -->
+            <linearGradient id="rainbowGrad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="400" y2="0">
+              <stop offset="0%"  stop-color="#ff0000"><animate attributeName="stop-color" values="#ff0000;#ff7f00;#ffff00;#00ff00;#0000ff;#4b0082;#8f00ff;#ff0000" dur="8s" repeatCount="indefinite"/></stop>
+              <stop offset="50%" stop-color="#00ff00"><animate attributeName="stop-color" values="#00ff00;#0000ff;#4b0082;#8f00ff;#ff0000;#ff7f00;#ffff00;#00ff00" dur="8s" repeatCount="indefinite"/></stop>
+              <stop offset="100%" stop-color="#0000ff"><animate attributeName="stop-color" values="#0000ff;#4b0082;#8f00ff;#ff0000;#ff7f00;#ffff00;#00ff00;#0000ff" dur="8s" repeatCount="indefinite"/></stop>
+              <animateTransform attributeName="gradientTransform" type="translate" from="-400 0" to="400 0" dur="6s" repeatCount="indefinite"/>
+            </linearGradient>
+          </defs>
 
+          <image id="bg" href="image.png" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid meet" opacity="0.98" />
+          <g id="pins"></g>
+          <path id="routeBg" d=""></path>
+          <path id="route" d=""></path>
+          <path id="draft" d=""></path>
+          <g id="arrow" transform="translate(-100,-100)">
+            <circle class="pulse" r="0"><animate attributeName="r" values="0;20" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values=".5;0" dur="1.6s" repeatCount="indefinite"/></circle>
+            <path class="tail" d="M-10,-3 L-2,0 L-10,3 Z"/>
+            <path class="head" d="M0,-6 L16,0 L0,6 L3,0 Z"/>
+          </g>
+        </svg>
+      </main>
     </div>
-    
-    <div class="card mapBox">
-      <svg id="map" class="map" viewBox="0 0 1307 768" preserveAspectRatio="xMidYMid meet">
-        <defs>
-          <linearGradient id="g" x1="0" y1="0" x2="1200" y2="0" gradientUnits="userSpaceOnUse">
-            <stop offset="0%" stop-color="var(--cyan)"/><stop offset="100%" stop-color="var(--pink)"/>
-          </linearGradient>
-          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="4" result="b"/>
-            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
-        </defs>
-        <image href="image.png" x="0" y="0" width="1307" height="768" opacity=".95"/>
-        <!-- saved route -->
-        <path id="routeBg" d="" fill="none" stroke="#22314e" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
-        <path id="route" d="" fill="none" stroke="url(#g)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
-        <!-- drawing preview -->
-        <polyline id="preview" points="" fill="none" stroke="url(#g)" stroke-width="6" stroke-dasharray="8,8" style="display:none"/>
-        <!-- arrow -->
-        <g id="arrow" style="display:none" filter="url(#glow)">
-          <polygon points="0,0 -18,-10 -18,10" fill="#ffd54a" stroke="#0b111b" stroke-width="0.7" vector-effect="non-scaling-stroke"/>
-        </g>
-      </svg>
-      <div class="hint">Tip: zoom with browser zoom (Ctrl/Cmd + +/–). Works up to 8K displays.</div>
-    </div>
+
+    <footer class="small">
+      <div class="credit">Created by Awaiz Ahmed</div><div></div>
+    </footer>
   </div>
-</div>
 
-<script>
+  <script>
+  /* ---------- mesh background (subtle, performant) ---------- */
+  (function(){
+    const canvas = document.getElementById('mesh');
+    if(!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let w=0,h=0,dpr=1, nodes=[], maxLinks=110, nodeCount=0;
+    const MAX_D = 140;     // link radius (px)
+    const DOT_R = 1.5;     // dot radius (px)
+    const SPEED = 0.06;    // base speed (px/ms)
+    let last=0, hueBase=210;
 
-function requireLogin(callback){
-  const u = prompt("Enter username:");
-  const p = prompt("Enter password:");
-  if(u==="awaiz" && p==="edge1234"){
-    localStorage.setItem("wf_dev_logged_in", "true");
-    callback(true);
-  }else{
-    alert("Invalid credentials");
-    callback(false);
-  }
-}
+    function resize(){
+      dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      w = canvas.clientWidth;
+      h = canvas.clientHeight;
+      canvas.width = w*dpr;
+      canvas.height = h*dpr;
+      ctx.setTransform(dpr,0,0,dpr,0,0);
 
-/* ---------- Config ---------- */
-const LOCATIONS = [
-  "You are here",
-  "Creative Space",
-  "Edge Digital Factory",
-  "Analytics Area",
-  "Office 1",
-  "Office 2",
-  "Reception",
-  "VIP meeting room",
-  "Smart learning Factory",
-  "lean Area",
-  "Auditorium",
-  "Pantry 2",
-  "Training Room 1",
-  "Training Room 2",
-  "Training Room 3",
-  "Pantry 1",
-  "Male Toilet",
-  "Female Toilet",
-  "Lounge",
-  "Male Prayer Room",
-  "Female Prayer Room"
-];
-const YOU_KEY = "You are here";
+      // number of nodes scales with area (cap for perf)
+      nodeCount = Math.max(40, Math.min(120, Math.floor((w*h)/18000)));
+      spawnNodes();
+    }
+    function spawnNodes(){
+      nodes = new Array(nodeCount).fill(0).map(()=>({
+        x: Math.random()*w,
+        y: Math.random()*h,
+        vx:(Math.random()*2-1)*SPEED,
+        vy:(Math.random()*2-1)*SPEED
+      }));
+    }
+    function step(ts){
+      if(!last) last = ts;
+      const dt = ts - last; last = ts;
 
-/* ---------- DOM ---------- */
-const svg = document.getElementById('map');
-const route = document.getElementById('route');
-const routeBg = document.getElementById('routeBg');
-const preview = document.getElementById('preview');
-const arrow = document.getElementById('arrow');
-const fromSel = document.getElementById('from');
-const toSel = document.getElementById('to');
-const statusEl = document.getElementById('status');
-const drawBtn = document.getElementById('draw');
-const undoBtn = document.getElementById('undo');
-const saveBtn = document.getElementById('save');
-const clearPairBtn = document.getElementById('clearPair');
-const clearAllBtn = document.getElementById('clearAll');
-const devActions = document.getElementById('devActions');
-const userModeBtn = document.getElementById('userModeBtn');
-const devModeBtn = document.getElementById('devModeBtn');
-const fromLbl = document.getElementById('fromLbl');
-const fromPill = document.getElementById('fromPill');
+      // soft clear
+      ctx.clearRect(0,0,w,h);
+      // drift hue slightly over time (cool→warm→cool)
+      const hue = (hueBase + (ts/80))%360;
 
-/* ---------- Storage ---------- */
-let ROUTES = JSON.parse(localStorage.getItem('wf_routes_v2')||'{}');
-function keyFor(a,b){ return a + '->' + b; }
+      // move
+      for(const n of nodes){
+        n.x += n.vx * dt;
+        n.y += n.vy * dt;
+        if(n.x<0||n.x>w) n.vx*=-1;
+        if(n.y<0||n.y>h) n.vy*=-1;
+      }
 
-/* ---------- Mode ---------- */
-let mode = localStorage.getItem('wf_mode') || 'user';
-function setMode(m){
-  mode = m;
-  localStorage.setItem('wf_mode', m);
-  userModeBtn.setAttribute('aria-pressed', m==='user');
-  devModeBtn.setAttribute('aria-pressed', m==='dev');
-  userModeBtn.setAttribute('aria-selected', m==='user');
-  devModeBtn.setAttribute('aria-selected', m==='dev');
+      // connections
+      ctx.lineWidth = 1;
+      let links = 0;
+      for(let i=0;i<nodes.length;i++){
+        const a = nodes[i];
+        for(let j=i+1;j<nodes.length;j++){
+          const b = nodes[j];
+          const dx=a.x-b.x, dy=a.y-b.y;
+          const d = Math.hypot(dx,dy);
+          if(d<MAX_D){
+            const alpha = (1 - d/MAX_D) * 0.18; // subtle
+            ctx.strokeStyle = `hsla(${hue}, 30%, 75%, ${alpha})`;
+            ctx.beginPath();
+            ctx.moveTo(a.x,a.y);
+            ctx.lineTo(b.x,b.y);
+            ctx.stroke();
+            if(++links>nodeCount*3 || links>maxLinks) break;
+          }
+        }
+      }
 
-  devActions.style.display = m==='dev' ? 'grid' : 'none';
-  fromSel.style.display = m==='dev' ? 'block' : 'none';
-  fromLbl.textContent = m==='dev' ? 'From' : 'From (fixed)';
-  fromPill.style.display = m==='dev' ? 'none' : 'flex';
-  if(m==='user'){
-    fromSel.value = YOU_KEY;
-    fromSel.disabled = true;
-    statusEl.innerHTML = 'User mode: pick your destination. This kiosk assumes <strong>You are here</strong> as the starting point.';
-  }else{
-    fromSel.disabled = false;
-    statusEl.textContent = 'Developer mode: select From/To, draw the corridor path and save.';
-  }
-  render();
-}
-userModeBtn.addEventListener('click', ()=>setMode('user'));
-devModeBtn.addEventListener('click', ()=>{
-  if(localStorage.getItem("wf_dev_logged_in")=="true"){ setMode("dev"); logoutBtn.style.display="block"; } else { requireLogin(ok=>{ if(ok){ setMode("dev"); logoutBtn.style.display="block"; } }); }
-});
+      // dots
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      for(const n of nodes){
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, DOT_R, 0, Math.PI*2);
+        ctx.fill();
+      }
 
-/* ---------- Populate selects ---------- */
-function fillSelects(){
-  // From
-  fromSel.innerHTML = '';
-  LOCATIONS.forEach(name=>{
-    const opt = document.createElement('option');
-    opt.value = name; opt.textContent = name;
-    fromSel.appendChild(opt);
-  });
-  // To
-  toSel.innerHTML='';
-  LOCATIONS.filter(n=>n!==YOU_KEY).forEach(name=>{
-    const opt = document.createElement('option');
-    opt.value = name; opt.textContent = name;
-    toSel.appendChild(opt);
-  });
-  // defaults
-  fromSel.value = YOU_KEY;
-  toSel.value = '';
-}
-fillSelects();
+      requestAnimationFrame(step);
+    }
 
-/* ---------- Drawing state ---------- */
-let drawing=false, pts=[];
+    // init
+    resize();
+    requestAnimationFrame(step);
+    window.addEventListener('resize', resize);
+  })();
 
-function setStatus(msg){ statusEl.innerHTML = msg; }
-function setPreview(){ preview.setAttribute('points', pts.map(p=>p.join(',')).join(' ')); }
-function updatePairButtons(){
-  const hasPair = !!(fromSel.value && toSel.value);
-  clearPairBtn.disabled = !(hasPair && ROUTES[keyFor(fromSel.value,toSel.value)]);
-}
+  (function(){
+    const LS_ROUTES='wf_routes_v1', LS_MARKERS='wf_markers_v1', LS_YOU='wf_you_pos_v1', YOU_KEY='YOU';
+    let ROUTES=JSON.parse(localStorage.getItem(LS_ROUTES)||'{}');
+    let MARKERS=JSON.parse(localStorage.getItem(LS_MARKERS)||'{}');
+    let YOU_POS=JSON.parse(localStorage.getItem(LS_YOU)||'null');
+    let devUnlocked=false;
 
-function roundedPath(points, r){
-  if(points.length<2) return '';
-  let d='M ' + points[0][0] + ' ' + points[0][1];
-  for(let i=1;i<points.length-1;i++){
-    const pPrev=points[i-1], p=points[i], pNext=points[i+1];
-    const v1=[pPrev[0]-p[0], pPrev[1]-p[1]], v2=[pNext[0]-p[0], pNext[1]-p[1]];
-    const m1=Math.hypot(v1[0],v1[1]), m2=Math.hypot(v2[0],v2[1]);
-    const u1=[v1[0]/m1, v1[1]/m1], u2=[v2[0]/m2, v2[1]/m2];
-    const dot=u1[0]*u2[0]+u1[1]*u2[1];
-    if(Math.abs(dot)>0.999){ d+=' L '+p[0]+' '+p[1]; continue; }
-    const a=Math.min(r, Math.hypot(p[0]-pPrev[0],p[1]-pPrev[1])/2);
-    const b=Math.min(r, Math.hypot(p[0]-pNext[0],p[1]-pNext[1])/2);
-    const p1=[p[0]+u1[0]*a, p[1]+u1[1]*a];
-    const p2=[p[0]+u2[0]*b, p[1]+u2[1]*b];
-    d+=' L '+p1[0]+' '+p1[1]+' Q '+p[0]+' '+p[1]+' '+p2[0]+' '+p2[1];
-  }
-  const last=points[points.length-1];
-  d+=' L '+last[0]+' '+last[1];
-  return d;
-}
+    const $=q=>document.querySelector(q);
+    const svg=$('#svg'), pinsLayer=$('#pins'), route=$('#route'), routeBg=$('#routeBg'), draft=$('#draft'), arrow=$('#arrow');
+    const fromSel=$('#fromSel'), toSel=$('#toSel'), statusEl=$('#status'), devPanel=$('#devPanel');
+    const modeDev=$('#modeDev'), modeUser=$('#modeUser'), logoutDev=$('#logoutDev'), devToggle=$('#devToggle'), bg=$('#bg');
+    const addPointBtn=$('#addPoint'), setHereBtn=$('#setHere'), btnDraw=$('#btnDraw'), btnUndo=$('#btnUndo'), btnSave=$('#btnSave');
+    const btnDelete=$('#btnDelete'), btnExport=$('#btnExport'), importFile=$('#importFile'), btnClearAll=$('#btnClearAll'), btnListRoutes=$('#btnListRoutes');
 
-function render(){
-  arrow.style.display='none';
-  route.setAttribute('d',''); routeBg.setAttribute('d','');
-  const from = mode==='user' ? YOU_KEY : fromSel.value;
-  const to = toSel.value;
-  if(!(from && to)){ updatePairButtons(); return; }
-  const k = keyFor(from,to);
-  const saved = ROUTES[k];
-  if(!saved){
-    setStatus((mode==='user' ? 'No route found. ' : '') + 'Select another pair or (in Developer mode) click "Draw route" to create one.');
-    updatePairButtons(); return;
-  }
-  const d = roundedPath(saved, 20);
-  route.setAttribute('d', d); routeBg.setAttribute('d', d);
-  setStatus('Showing saved route for <strong>'+from+'</strong> → <strong>'+to+'</strong>.');
-  updatePairButtons();
-  animateArrow();
-}
+    let mode='user', placing=null, drawing=false, points=[], anim=null;
 
-function animateArrow(){
-  const total = route.getTotalLength();
-  if(!total) return;
-  route.style.strokeDasharray = total;
-  route.style.strokeDashoffset = total;
-  const t0 = performance.now(), dur = 2200;
-  function frame(now){
-    const t = Math.min((now-t0)/dur, 1);
-    const len = total*(0.2 + 0.8*t);
-    route.style.strokeDashoffset = total-len;
-    const p  = route.getPointAtLength(Math.max(0,len-1));
-    const p2 = route.getPointAtLength(Math.min(total,len+1));
-    const ang = Math.atan2(p2.y-p.y, p2.x-p.x)*180/Math.PI;
-    arrow.setAttribute('transform', 'translate('+p.x+','+p.y+') rotate('+ang+')');
-    arrow.style.display='block';
-    if(t<1) requestAnimationFrame(frame);
-  }
-  requestAnimationFrame(frame);
-}
+    function setStatus(html){ statusEl && (statusEl.innerHTML=html); }
+    function saveRoutes(){ localStorage.setItem(LS_ROUTES, JSON.stringify(ROUTES)); }
+    function saveMarkers(){ localStorage.setItem(LS_MARKERS, JSON.stringify(MARKERS)); }
+    function saveYou(){ YOU_POS? localStorage.setItem(LS_YOU, JSON.stringify(YOU_POS)) : localStorage.removeItem(LS_YOU); }
+    const keyFor=(f,t)=>f+'→'+t;
+    function svgPoint(e){const pt=svg.createSVGPoint(); if(e.touches&&e.touches[0]){pt.x=e.touches[0].clientX; pt.y=e.touches[0].clientY;}else{pt.x=e.clientX; pt.y=e.clientY;} return pt.matrixTransform(svg.getScreenCTM().inverse());}
+    function drawPathD(list){ if(!list||!list.length) return ''; const a=list[0]; return 'M '+a.x+' '+a.y+' L '+list.map(p=>p.x+' '+p.y).join(' '); }
+    function clearRoute(){ route.setAttribute('d',''); routeBg.setAttribute('d',''); draft.setAttribute('d',''); if(anim) cancelAnimationFrame(anim); arrow.setAttribute('transform','translate(-100,-100)'); }
 
-/* ---------- UI events ---------- */
-[fromSel,toSel].forEach(el=> el.addEventListener('change', render));
+    function fitToImage(){
+      const img=new Image();
+      img.onload=()=>{ const W=img.naturalWidth||768, H=img.naturalHeight||1344; svg.setAttribute('viewBox',`0 0 ${W} ${H}`); bg.setAttribute('width',W); bg.setAttribute('height',H); };
+      img.src=bg.getAttribute('href');
+    }
+    fitToImage();
 
-function beginDrawing(){
-  if(mode!=='dev'){ return; }
-  if(!(fromSel.value && toSel.value)){ setStatus('Pick From & To first.'); return; }
-  drawing=true; pts=[]; preview.style.display='block'; setPreview();
-  undoBtn.disabled=false; saveBtn.disabled=false;
-  setStatus('Drawing: click along the corridor. Save when done. (Esc to cancel)');
-}
-document.getElementById('draw').addEventListener('click', beginDrawing);
+    // Mode switching
+    modeDev && modeDev.addEventListener('change',()=>setMode(modeDev.checked?'dev':'user'));
+    modeUser && modeUser.addEventListener('change',()=>setMode(modeUser.checked?'user':'dev'));
+    devToggle && devToggle.addEventListener('click',()=>setMode('dev'));
+    logoutDev && logoutDev.addEventListener('click',()=>{devUnlocked=false; modeUser&&(modeUser.checked=true); setMode('user');});
 
-undoBtn.addEventListener('click', ()=>{
-  if(!drawing || pts.length===0) return;
-  pts.pop(); setPreview();
-});
+    function login(){ const u=prompt('Username:'), p=prompt('Password:'); return (u==='awaiz' && p==='1234'); }
+    function setMode(m){
+      if(m==='dev' && !devUnlocked){ if(!login()){ alert('Access denied.'); modeUser&&(modeUser.checked=true); m='user'; } else { devUnlocked=true; } }
+      mode=m;
+      document.body.classList.toggle('user-only', m==='user');
+      devPanel && devPanel.classList.toggle('hidden', m!=='dev');
+      logoutDev && logoutDev.classList.toggle('hidden', m!=='dev');
+      (fromSel?.parentElement||{}).classList?.toggle('hidden', m!=='dev');
+      (toSel?.parentElement||{}).classList?.toggle('hidden', m!=='dev');
+      setStatus(m==='user' ? 'User mode: click a labeled area to go there. Start is <strong>You are here</strong>.' : 'Developer mode: add points, set start, draw and save routes.');
+      clearRoute(); renderPins();
+      modeDev && (modeDev.checked = m==='dev');
+      modeUser && (modeUser.checked = m==='user');
+    }
 
-function savePair(){
-  if(mode!=='dev'){ return; }
-  const k = keyFor(fromSel.value, toSel.value);
-  if(pts.length<2){ setStatus('Add at least 2 points.'); return; }
-  ROUTES[k] = pts.slice();
-  localStorage.setItem('wf_routes_v2', JSON.stringify(ROUTES));
-  drawing=false; preview.style.display='none'; undoBtn.disabled=true; saveBtn.disabled=true;
-  setStatus('Saved route for <strong>'+fromSel.value+'</strong> → <strong>'+toSel.value+'</strong>.');
-  render();
-}
-saveBtn.addEventListener('click', savePair);
+    function fillSelects(){
+      if(!fromSel || !toSel) return;
+      fromSel.innerHTML=''; toSel.innerHTML='';
+      const addOpt=(el,val,txt)=>{const o=document.createElement('option');o.value=val;o.textContent=txt;el.appendChild(o);}
+      addOpt(fromSel,'YOU','You are here');
+      Object.keys(MARKERS).sort().forEach(n=>{addOpt(fromSel,n,n); addOpt(toSel,n,n);});
+      fromSel.value='YOU'; toSel.value='';
+    }
 
-clearPairBtn.addEventListener('click', ()=>{
-  if(mode!=='dev') return;
-  const k = keyFor(fromSel.value,toSel.value);
-  delete ROUTES[k];
-  localStorage.setItem('wf_routes_v2', JSON.stringify(ROUTES));
-  setStatus('Cleared saved route for this pair.'); render();
-});
+    function ns(tag){return document.createElementNS('http://www.w3.org/2000/svg',tag)}
+    function renderPins(){
+      pinsLayer.innerHTML='';
+      for(const [name,p] of Object.entries(MARKERS)){
+        const g=ns('g'); g.setAttribute('transform',`translate(${p.x},${p.y})`);
+        const c=ns('circle'); c.setAttribute('r',8); c.style.fill='#ffffff18'; c.style.stroke='#cbd5e1';
+        const t=ns('text'); t.setAttribute('x',12); t.setAttribute('y',4); t.textContent=name; t.setAttribute('fill','#e5eefc'); t.setAttribute('stroke','#0b0d10'); t.setAttribute('stroke-width','2');
+        g.append(c,t);
+        g.addEventListener('click',()=>{ if(mode==='dev' && placing) return; if(mode==='user'){navigateTo(name);} else {toSel.value=name; setStatus('Selected destination: <b>'+name+'</b>.'); showRoute(fromSel.value||'YOU', name);} });
+        pinsLayer.appendChild(g);
+      }
+      if(YOU_POS){
+        const g=ns('g'); g.setAttribute('transform',`translate(${YOU_POS.x},${YOU_POS.y})`);
+        const c=ns('circle'); c.setAttribute('r',9); c.style.fill='#ffdcb8'; c.style.stroke='#ff6a00';
+        const t=ns('text'); t.setAttribute('x',12); t.setAttribute('y',4); t.textContent='You are here'; t.setAttribute('fill','#e5eefc'); t.setAttribute('stroke','#0b0d10'); t.setAttribute('stroke-width','2');
+        g.append(c,t); pinsLayer.appendChild(g);
+      }
+    }
 
-clearAllBtn.addEventListener('click', ()=>{
-  if(mode!=='dev') return;
-  if(!confirm('Delete ALL saved routes?')) return;
-  ROUTES = {}; localStorage.removeItem('wf_routes_v2');
-  setStatus('All saved routes cleared.'); render();
-});
+    function showRoute(fromKey,toKey){
+      clearRoute(); if(!fromKey||!toKey) return;
+      const arr=ROUTES[keyFor(fromKey,toKey)];
+      if(!arr || !arr.length){ if(mode==='user') setStatus('No saved route from <b>You are here</b> to <b>'+toKey+'</b>.'); return; }
+      const d=drawPathD(arr); route.setAttribute('d',d); routeBg.setAttribute('d',d);
+      setStatus('Showing saved route <b>'+label(fromKey)+'</b> → <b>'+label(toKey)+'</b>.'); animateAlong(route);
+    }
+    const label=k=>k==='YOU'?'You are here':k;
 
-// drawing on svg
-window.addEventListener('keydown', (e)=>{
-  if(e.key==='Escape' && drawing){
-    drawing=false; preview.style.display='none'; undoBtn.disabled=true; saveBtn.disabled=true;
-    setStatus('Canceled drawing.');
-  }
-});
-svg.addEventListener('click', (e)=>{
-  if(!drawing) return;
-  const pt = svg.createSVGPoint(); pt.x=e.clientX; pt.y=e.clientY;
-  const p = pt.matrixTransform(svg.getScreenCTM().inverse());
-  pts.push([Math.round(p.x), Math.round(p.y)]); setPreview();
-});
+    function animateAlong(path){
+      const L=path.getTotalLength(); let t0=null; const dur=Math.max(2000,L*4);
+      function step(ts){ if(!t0) t0=ts; const dlen=((ts-t0)%dur)/dur*L; const pos=path.getPointAtLength(dlen); const ahead=path.getPointAtLength(Math.min(dlen+2,L)); const ang=Math.atan2(ahead.y-pos.y,ahead.x-pos.x)*180/Math.PI; arrow.setAttribute('transform',`translate(${pos.x},${pos.y}) rotate(${ang})`); anim=requestAnimationFrame(step); }
+      if(anim) cancelAnimationFrame(anim); anim=requestAnimationFrame(step);
+    }
 
+    function navigateTo(name){ if(!YOU_POS){ setStatus('Set <b>You are here</b> in Developer mode first.'); return; } setStatus('Destination selected: <b>'+name+'</b>.'); showRoute('YOU', name); }
 
-const logoutBtn = document.getElementById('logoutBtn');
-logoutBtn.addEventListener('click', ()=>{
-  localStorage.removeItem('wf_dev_logged_in');
-  alert("Logged out from Developer mode.");
-  setMode('user');
-  logoutBtn.style.display='none';
-});
+    // Dev actions
+    addPointBtn && addPointBtn.addEventListener('click',()=>{ if(mode!=='dev') return; placing='point'; setStatus('Add point: click the map where the label should be.'); });
+    setHereBtn && setHereBtn.addEventListener('click',()=>{ if(mode!=='dev') return; placing='here'; setStatus('Set “You are here”: click the map.'); });
+    btnDraw && btnDraw.addEventListener('click',()=>{ if(mode!=='dev') return; const to=toSel.value; if(!to){ setStatus('Choose a destination in <b>To</b> first.'); return; } drawing=true; points=[]; btnUndo.disabled=false; btnSave.disabled=false; draft.setAttribute('d',''); setStatus('Drawing route… Click to add points, <span class="kbd">Enter</span> to finish.'); });
+    btnUndo && btnUndo.addEventListener('click',()=>{ if(!drawing||!points.length) return; points.pop(); draft.setAttribute('d',drawPathD(points)); });
+    btnSave && btnSave.addEventListener('click',()=>{ if(!drawing||!points.length){ setStatus('Nothing to save.'); return; } const from=fromSel.value||'YOU', to=toSel.value; ROUTES[keyFor(from,to)]=points.slice(); saveRoutes(); drawing=false; btnUndo.disabled=true; btnSave.disabled=true; draft.setAttribute('d',''); setStatus('Saved route.'); showRoute(from,to); });
+    btnDelete && btnDelete.addEventListener('click',()=>{ const from=fromSel.value||'YOU', to=toSel.value; if(!to){ setStatus('Select a destination.'); return; } const k=keyFor(from,to); if(ROUTES[k]){ if(confirm('Delete saved route?')){ delete ROUTES[k]; saveRoutes(); clearRoute(); setStatus('Deleted.'); } } else setStatus('No saved route.'); });
+    btnExport && btnExport.addEventListener('click',()=>{ const data={markers:MARKERS,you:YOU_POS,routes:ROUTES,meta:{exportedAt:new Date().toISOString(),version:1}}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='wayfinding-data.json'; a.click(); URL.revokeObjectURL(url); });
+    importFile && importFile.addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f) return; try{ const data=JSON.parse(await f.text()); MARKERS=data.markers||{}; YOU_POS=data.you||null; ROUTES=data.routes||{}; saveMarkers(); saveYou(); saveRoutes(); fillSelects(); renderPins(); clearRoute(); setStatus('Imported.'); }catch{ alert('Invalid JSON file.'); } importFile.value=''; });
+    btnClearAll && btnClearAll.addEventListener('click',()=>{ if(!confirm('Clear all?')) return; MARKERS={}; YOU_POS=null; ROUTES={}; localStorage.removeItem(LS_MARKERS); localStorage.removeItem(LS_YOU); localStorage.removeItem(LS_ROUTES); fillSelects(); renderPins(); clearRoute(); setStatus('All data cleared.'); });
+    btnListRoutes && btnListRoutes.addEventListener('click',()=>{ const keys=Object.keys(ROUTES); alert(keys.length? 'Saved routes:\n'+keys.map(k=>k.replace('→',' → ')).join('\n') : 'No routes saved yet.'); });
 
-// init
-setMode(mode);
-render();
-</script>
+    // Map click for placing/drawing
+    svg.addEventListener('click',e=>{
+      const p=svgPoint(e);
+      if(placing){
+        if(placing==='point'){
+          const name=prompt('Enter location name (e.g., Reception)');
+          if(name && name.trim() && name!=='You are here' && name!=='YOU'){ MARKERS[name.trim()]={x:Math.round(p.x),y:Math.round(p.y)}; saveMarkers(); fillSelects(); renderPins(); setStatus('Added point: <b>'+name.trim()+'</b>.'); }
+        }else if(placing==='here'){ YOU_POS={x:Math.round(p.x), y:Math.round(p.y)}; saveYou(); renderPins(); setStatus('Set <b>You are here</b>.'); }
+        placing=null; return;
+      }
+      if(drawing){ points.push({x:Math.round(p.x),y:Math.round(p.y)}); draft.setAttribute('d',drawPathD(points)); }
+    });
+
+    // Keys while drawing
+    window.addEventListener('keydown',e=>{
+      if(!drawing) return;
+      if(e.key==='Escape'){ drawing=false; points=[]; draft.setAttribute('d',''); btnUndo.disabled=true; btnSave.disabled=true; setStatus('Drawing cancelled.'); }
+      else if(e.key==='Enter'){ btnSave.click(); }
+      else if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='z'){ btnUndo.click(); }
+    });
+
+    // Init (default User mode)
+    fillSelects();
+    renderPins();
+    document.body.classList.add('user-only');
+    modeUser && (modeUser.checked=true);
+    setStatus('User mode: click a labeled area to go there. Start is <strong>You are here</strong>.');
+  })();
+  </script>
 </body>
 </html>
