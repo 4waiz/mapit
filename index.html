@@ -78,14 +78,14 @@
     body.user-only .dev-toggle{display:flex; align-items:center; gap:8px}
 
     .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .chip{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:999px;padding:4px 8px;background:#131920;gap:6px;color:var(--ink-soft)}
+    .chip{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:999px;padding:4px 8px;background:#131920;gap:6px;color:#c7d0dc}
     label.switch{display:inline-grid;grid-template-columns:1fr 1fr;gap:2px;background:#0e1318;border:1px solid var(--border);border-radius:999px;overflow:hidden}
     label.switch input{display:none}
-    label.switch span{padding:6px 12px;cursor:pointer;user-select:none;color:var(--ink-soft)}
+    label.switch span{padding:6px 12px;cursor:pointer;user-select:none;color:#c0c8d5}
     label.switch input:checked + span{background:#141a22;color:#fff;}
-    .status{color:var(--muted)}
+    .status{color:#8a96a8}
 
-    .btn{appearance:none;border:1px solid var(--border);border-radius:10px;background:#141a22;color:var(--ink);padding:8px 12px;cursor:pointer}
+    .btn{appearance:none;border:1px solid var(--border);border-radius:10px;background:#141a22;color:#eef3fb;padding:8px 12px;cursor:pointer}
     .btn:hover{background:#0f141b}
     .btn[disabled]{opacity:.45;cursor:not-allowed}
     .btn.primary{background:#ff6a00;border-color:#ff6a00;color:#111}
@@ -112,14 +112,35 @@
     svg{width:100%;height:100%;min-height:0;border-radius:10px;background:transparent;flex:1 1 auto}
 
     /* Route & arrow */
-    #routeBg{stroke:var(--route-bg);stroke-width:12;fill:none;stroke-linecap:round;stroke-linejoin:round}
-    #route{stroke:url(#rainbowGrad);stroke-width:4;fill:none;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 6px rgba(255,106,0,.25));stroke-dasharray:10 12;animation:dash 1.2s linear infinite}
+    /* WHITE route with ORANGE glow */
+    #routeBg{
+      stroke:#ffffff;          /* underlay is white now */
+      stroke-width:12;
+      fill:none;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      filter:url(#orangeAura); /* orange aura */
+    }
+
+    #route{
+      stroke:#ffffff;          /* no RGB/gradient */
+      stroke-width:4;
+      fill:none;
+      stroke-linecap:round;
+      stroke-linejoin:round;
+      stroke-dasharray:10 12;  /* keep dashes (optional) */
+      animation:dash 1.2s linear infinite;
+      filter:url(#orangeAura); /* orange aura */
+    }
+
     @keyframes dash{to{stroke-dashoffset:-220}}
     #draft{stroke:#9aa9be;stroke-dasharray:6 6;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+    /* >>> Restyled arrow (white–grey gradient; no RGB animation) */
     #arrow{filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
-    #arrow .head{fill:#ff6a00;stroke:#111;stroke-width:1}
-    #arrow .tail{fill:#fff;opacity:.9}
-    #arrow .pulse{fill:none;stroke:#ff6a00;stroke-width:2;opacity:.5}
+    #arrow .head{fill:url(#arrowGrad);stroke:#e0e0e0;stroke-width:1}
+    #arrow .tail{fill:#f2f2f2;opacity:.95}
+    #arrow .pulse{fill:none;stroke:#d9d9d9;stroke-width:2;opacity:.5}
 
     footer.small{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;color:#9fb0c7;border-top:1px solid var(--border);background:#0f1318}
 
@@ -128,6 +149,31 @@
     body.user-only .layout{grid-template-columns:1fr; padding:calc(var(--logoH) + 16px) 0 0 0}
     body.user-only .mapwrap{border:none;border-radius:0;padding:0}
     body.user-only svg{border-radius:0}
+
+    /* >>> Bottom-left credit (user mode only) */
+    .user-credit{
+      position:fixed; bottom:14px; left:18px;
+      font-size:14px; font-weight:600;
+      padding:6px 14px; border-radius:12px;
+      background:rgba(20,24,30,.55); backdrop-filter:blur(6px);
+      letter-spacing:.5px; z-index:5; display:none;
+      text-decoration:none; white-space:nowrap;
+
+      /* shiny neutral text */
+      background-image:linear-gradient(90deg,#ffffff,#d9d9d9,#ffffff);
+      background-size:200% auto;
+      color:#fff; background-clip:text; -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      text-shadow:0 0 6px rgba(255,255,255,.6), 0 0 12px rgba(200,200,200,.4);
+      animation:shineMove 4s linear infinite;
+      transition:transform .25s ease, text-shadow .25s ease;
+    }
+    body.user-only .user-credit{display:inline-block}
+    .user-credit:hover{
+      transform:scale(1.05);
+      text-shadow:0 0 10px rgba(255,255,255,.9), 0 0 20px rgba(200,200,200,.7);
+    }
+    @keyframes shineMove{0%{background-position:0% 50%}100%{background-position:200% 50%}}
   </style>
 </head>
 <body>
@@ -180,16 +226,18 @@
 
         <!-- SVG map: viewBox set dynamically to match image size -->
         <svg id="svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <!-- animated rainbow gradient -->
-            <linearGradient id="rainbowGrad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="400" y2="0">
-              <stop offset="0%"  stop-color="#ff0000"><animate attributeName="stop-color" values="#ff0000;#ff7f00;#ffff00;#00ff00;#0000ff;#4b0082;#8f00ff;#ff0000" dur="8s" repeatCount="indefinite"/></stop>
-              <stop offset="50%" stop-color="#00ff00"><animate attributeName="stop-color" values="#00ff00;#0000ff;#4b0082;#8f00ff;#ff0000;#ff7f00;#ffff00;#00ff00" dur="8s" repeatCount="indefinite"/></stop>
-              <stop offset="100%" stop-color="#0000ff"><animate attributeName="stop-color" values="#0000ff;#4b0082;#8f00ff;#ff0000;#ff7f00;#ffff00;#00ff00;#0000ff" dur="8s" repeatCount="indefinite"/></stop>
-              <animateTransform attributeName="gradientTransform" type="translate" from="-400 0" to="400 0" dur="6s" repeatCount="indefinite"/>
-            </linearGradient>
-          </defs>
+          <filter id="orangeAura" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#ff8a00" flood-opacity="1"/>
+            <feDropShadow dx="0" dy="0" stdDeviation="6"   flood-color="#ff8a00" flood-opacity="0.7"/>
+            <feDropShadow dx="0" dy="0" stdDeviation="12"  flood-color="#ff8a00" flood-opacity="0.35"/>
+          </filter>
 
+
+            <!-- arrow gradient (static, neutral) -->
+            <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="100%" stop-color="#cfcfcf"/>
+            </linearGradient>
           <image id="bg" href="image.png" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid meet" opacity="0.98" />
           <g id="pins"></g>
           <path id="routeBg" d=""></path>
@@ -208,6 +256,9 @@
       <div class="credit">Created by Awaiz Ahmed</div><div></div>
     </footer>
   </div>
+
+  <!-- User-mode credit link -->
+  <a href="https://awaizahmed.com" target="_blank" rel="noopener noreferrer" class="user-credit">Created by Awaiz</a>
 
   <script>
   /* ---------- mesh background (subtle, performant) ---------- */
@@ -297,7 +348,7 @@
   })();
 
   (function(){
-    const LS_ROUTES='wf_routes_v1', LS_MARKERS='wf_markers_v1', LS_YOU='wf_you_pos_v1', YOU_KEY='YOU';
+    const LS_ROUTES='wf_routes_v1', LS_MARKERS='wf_markers_v1', LS_YOU='wf_you_pos_v1';
     let ROUTES=JSON.parse(localStorage.getItem(LS_ROUTES)||'{}');
     let MARKERS=JSON.parse(localStorage.getItem(LS_MARKERS)||'{}');
     let YOU_POS=JSON.parse(localStorage.getItem(LS_YOU)||'null');
@@ -329,11 +380,6 @@
     fitToImage();
 
     // Mode switching
-    modeDev && modeDev.addEventListener('change',()=>setMode(modeDev.checked?'dev':'user'));
-    modeUser && modeUser.addEventListener('change',()=>setMode(modeUser.checked?'user':'dev'));
-    devToggle && devToggle.addEventListener('click',()=>setMode('dev'));
-    logoutDev && logoutDev.addEventListener('click',()=>{devUnlocked=false; modeUser&&(modeUser.checked=true); setMode('user');});
-
     function login(){ const u=prompt('Username:'), p=prompt('Password:'); return (u==='awaiz' && p==='1234'); }
     function setMode(m){
       if(m==='dev' && !devUnlocked){ if(!login()){ alert('Access denied.'); modeUser&&(modeUser.checked=true); m='user'; } else { devUnlocked=true; } }
@@ -348,6 +394,10 @@
       modeDev && (modeDev.checked = m==='dev');
       modeUser && (modeUser.checked = m==='user');
     }
+    modeDev && modeDev.addEventListener('change',()=>setMode(modeDev.checked?'dev':'user'));
+    modeUser && modeUser.addEventListener('change',()=>setMode(modeUser.checked?'user':'dev'));
+    devToggle && devToggle.addEventListener('click',()=>setMode('dev'));
+    logoutDev && logoutDev.addEventListener('click',()=>{devUnlocked=false; modeUser&&(modeUser.checked=true); setMode('user');});
 
     function fillSelects(){
       if(!fromSel || !toSel) return;
@@ -364,7 +414,15 @@
       for(const [name,p] of Object.entries(MARKERS)){
         const g=ns('g'); g.setAttribute('transform',`translate(${p.x},${p.y})`);
         const c=ns('circle'); c.setAttribute('r',8); c.style.fill='#ffffff18'; c.style.stroke='#cbd5e1';
-        const t=ns('text'); t.setAttribute('x',12); t.setAttribute('y',4); t.textContent=name; t.setAttribute('fill','#e5eefc'); t.setAttribute('stroke','#0b0d10'); t.setAttribute('stroke-width','2');
+
+        // >>> White text with thin black outline for pin labels
+        const t=ns('text');
+        t.setAttribute('x',12); t.setAttribute('y',4); t.textContent=name;
+        t.setAttribute('fill','#ffffff');           // white
+        t.setAttribute('stroke','#000000');         // black outline
+        t.setAttribute('stroke-width','1.4');       // thin border
+        t.style.paintOrder = 'stroke';              // draw stroke behind fill
+
         g.append(c,t);
         g.addEventListener('click',()=>{ if(mode==='dev' && placing) return; if(mode==='user'){navigateTo(name);} else {toSel.value=name; setStatus('Selected destination: <b>'+name+'</b>.'); showRoute(fromSel.value||'YOU', name);} });
         pinsLayer.appendChild(g);
@@ -372,7 +430,15 @@
       if(YOU_POS){
         const g=ns('g'); g.setAttribute('transform',`translate(${YOU_POS.x},${YOU_POS.y})`);
         const c=ns('circle'); c.setAttribute('r',9); c.style.fill='#ffdcb8'; c.style.stroke='#ff6a00';
-        const t=ns('text'); t.setAttribute('x',12); t.setAttribute('y',4); t.textContent='You are here'; t.setAttribute('fill','#e5eefc'); t.setAttribute('stroke','#0b0d10'); t.setAttribute('stroke-width','2');
+
+        // >>> White text with thin black outline for "You are here"
+        const t=ns('text');
+        t.setAttribute('x',12); t.setAttribute('y',4); t.textContent='You are here';
+        t.setAttribute('fill','#ffffff');
+        t.setAttribute('stroke','#000000');
+        t.setAttribute('stroke-width','1.4');
+        t.style.paintOrder = 'stroke';
+
         g.append(c,t); pinsLayer.appendChild(g);
       }
     }
@@ -388,11 +454,23 @@
 
     function animateAlong(path){
       const L=path.getTotalLength(); let t0=null; const dur=Math.max(2000,L*4);
-      function step(ts){ if(!t0) t0=ts; const dlen=((ts-t0)%dur)/dur*L; const pos=path.getPointAtLength(dlen); const ahead=path.getPointAtLength(Math.min(dlen+2,L)); const ang=Math.atan2(ahead.y-pos.y,ahead.x-pos.x)*180/Math.PI; arrow.setAttribute('transform',`translate(${pos.x},${pos.y}) rotate(${ang})`); anim=requestAnimationFrame(step); }
+      function step(ts){
+        if(!t0) t0=ts;
+        const dlen=((ts-t0)%dur)/dur*L;
+        const pos=path.getPointAtLength(dlen);
+        const ahead=path.getPointAtLength(Math.min(dlen+2,L));
+        const ang=Math.atan2(ahead.y-pos.y,ahead.x-pos.x)*180/Math.PI;
+        arrow.setAttribute('transform',`translate(${pos.x},${pos.y}) rotate(${ang})`);
+        anim=requestAnimationFrame(step);
+      }
       if(anim) cancelAnimationFrame(anim); anim=requestAnimationFrame(step);
     }
 
-    function navigateTo(name){ if(!YOU_POS){ setStatus('Set <b>You are here</b> in Developer mode first.'); return; } setStatus('Destination selected: <b>'+name+'</b>.'); showRoute('YOU', name); }
+    function navigateTo(name){
+      if(!YOU_POS){ setStatus('Set <b>You are here</b> in Developer mode first.'); return; }
+      setStatus('Destination selected: <b>'+name+'</b>.');
+      showRoute('YOU', name);
+    }
 
     // Dev actions
     addPointBtn && addPointBtn.addEventListener('click',()=>{ if(mode!=='dev') return; placing='point'; setStatus('Add point: click the map where the label should be.'); });
@@ -412,8 +490,13 @@
       if(placing){
         if(placing==='point'){
           const name=prompt('Enter location name (e.g., Reception)');
-          if(name && name.trim() && name!=='You are here' && name!=='YOU'){ MARKERS[name.trim()]={x:Math.round(p.x),y:Math.round(p.y)}; saveMarkers(); fillSelects(); renderPins(); setStatus('Added point: <b>'+name.trim()+'</b>.'); }
-        }else if(placing==='here'){ YOU_POS={x:Math.round(p.x), y:Math.round(p.y)}; saveYou(); renderPins(); setStatus('Set <b>You are here</b>.'); }
+          if(name && name.trim() && name!=='You are here' && name!=='YOU'){
+            MARKERS[name.trim()]={x:Math.round(p.x),y:Math.round(p.y)};
+            saveMarkers(); fillSelects(); renderPins(); setStatus('Added point: <b>'+name.trim()+'</b>.');
+          }
+        }else if(placing==='here'){
+          YOU_POS={x:Math.round(p.x), y:Math.round(p.y)}; saveYou(); renderPins(); setStatus('Set <b>You are here</b>.');
+        }
         placing=null; return;
       }
       if(drawing){ points.push({x:Math.round(p.x),y:Math.round(p.y)}); draft.setAttribute('d',drawPathD(points)); }
