@@ -1,373 +1,308 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Mapit – Firebase Sync (Dev/User safe)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Wayfinding Map</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <style>
     :root {
-      --bg:#0f1217; --panel:#131821; --ink:#e8eefc; --muted:#8fa0bd; --accent:#5da0ff;
-      --danger:#ff5d7a; --ok:#34d399; --border:#223049;
+      --panel: #ffffff; --border: #e0e0e0; --ink: #333333; --primary-blue: #4488d0; --dev-panel-bg: #81a9d0;
+      --nebula-start: #1c1d24; --nebula-mid-orange: #d6cac2;
+      --nebula-mid-grey: #a7aab1; --nebula-end: #3f4049;
     }
     * { box-sizing: border-box; }
-    html, body { height:100%; }
+    html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
     body {
-      margin:0; background:var(--bg); color:var(--ink);
-      font:14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
-      display:flex; flex-direction:column;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: conic-gradient(at 0% 50%,
+        var(--nebula-start) 0%, var(--nebula-mid-orange) 20%,
+        var(--nebula-start) 35%, var(--nebula-mid-grey) 65%,
+        var(--nebula-start) 80%, var(--nebula-end) 100%);
+      background-size: 200% 200%;
+      animation: panBackground 60s linear infinite alternate;
     }
-    header {
-      display:flex; gap:.5rem; align-items:center; padding:.6rem .8rem;
-      background:var(--panel); border-bottom:1px solid var(--border);
-      position:sticky; top:0; z-index:10;
+    @keyframes panBackground { 0% { background-position: 0% 0%; } 100% { background-position: 100% 100%; } }
+    .bg-mesh { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+    #mesh { display: block; width: 100%; height: 100%; }
+    .app-container { display: flex; width: 100%; height: 100%; position: relative; z-index: 1; }
+    .dev-panel { width: 280px; background: var(--dev-panel-bg); border-right: 1px solid var(--border); padding: 12px; display: none; flex-direction: column; gap: 12px; overflow-y: auto; color: #333; }
+    body.dev-mode .dev-panel { display: flex; } .dev-panel h3 { margin: 0 0 4px; font-size: 14px; text-transform: uppercase; color: #666;} .dev-panel .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px;} .dev-panel .vsep { height: 1px; background: var(--border); margin: 8px 0; } .dev-panel .btn { background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 10px 12px; font-size: 14px; cursor: pointer; width: 100%; }
+    .dev-panel .btn:hover { background: #f0f0f0; } .dev-panel .btn.primary { background: var(--primary-blue); color: white; border-color: var(--primary-blue); } .dev-panel .btn.danger { background: #fbecec; color: #dc2626; border-color: #f8d7da; } .dev-panel .btn[disabled] { opacity: .5; cursor: not-allowed; } .dev-panel label { font-size: 14px; margin-bottom: 4px; display: block; } .dev-panel select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;} .dev-panel .hidden { display: none; }
+    .map-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      flex-grow: 1;
+      overflow: hidden; 
+      min-width: 0;
     }
-    header .spacer { flex:1 }
-    button, .chip {
-      background:#182133; color:var(--ink); border:1px solid var(--border);
-      padding:.4rem .7rem; border-radius:.55rem; cursor:pointer;
+    svg { width: 100%; height: 100%; background: transparent; touch-action: none; cursor: grab; }
+    svg:active { cursor: grabbing; }
+    .ui-overlay { position: absolute; z-index: 10; width: 100%; padding: 0 16px; pointer-events: none; } .ui-overlay > * { pointer-events: auto; }
+    .top-bar { top: 20px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+    .logo-container { grid-column: 1; justify-self: start; }
+    .logo-container img { height: 44px; width: auto; display: block; }
+    .search-wrapper { grid-column: 2; width: 100%; max-width: 400px; }
+    .search-bar { background: var(--panel); border-radius: 999px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; padding: 10px 16px; height: 44px; margin: 0 auto;} .search-bar i { color: #888; margin-right: 12px; } .search-bar input { border: none; outline: none; width: 100%; font-size: 16px; background: transparent;}
+    .created-by { grid-column: 3; justify-self: end; font-size: 15px; color: white; text-decoration: none; text-shadow: 0 0 8px rgba(255, 255, 255, 0.7); }
+    .side-controls { position: absolute; left: 16px; bottom: 120px; z-index: 10; display: flex; flex-direction: row; gap: 10px; } body.dev-mode .side-controls { display: none; }
+    .dev-mode-btn { background: var(--panel); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 44px; height: 44px; display: grid; place-items: center; cursor: pointer; font-size: 18px; }
+    .bottom-bar { bottom: 0; background: var(--panel); border-top: 1px solid var(--border); padding: 10px 16px 20px; box-shadow: 0 -4px 12px rgba(0,0,0,0.08); } body.dev-mode .bottom-bar { display: none; } .category-filters { display: flex; justify-content: space-around; gap: 8px;} .category-item { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; flex-grow: 1; cursor: pointer; padding: 6px; border-radius: 8px;} .category-item.active, .category-item:hover { background-color: #f0f0f0; }
+    .category-item .icon { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: 18px;} .category-item.active .icon { background-color: var(--primary-blue) !important; color: white !important;} .icon.walk { background-color: #e8e8e8; color: #333; } .icon.offices { background-color: #dcfce7; color: #16a34a; } .icon.training { background-color: #ffedd5; color: #9a3412; } .icon.services { background-color: #c20bb3; color: #fffcff; }
+    #routeBg { stroke: #a09898; stroke-width: 9; fill: none; stroke-linecap: round; stroke-linejoin: round;} #route { stroke: #ffffff; stroke-width: 3.5; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 8 10; animation: dash 3s linear infinite; } @keyframes dash { to { stroke-dashoffset: -180; } }
+    #draft{stroke:#9aa9be;stroke-dasharray:6 6;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round} #arrow { filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); } #arrow .head { fill: var(--primary-blue); stroke: white; stroke-width: 1.5; } #arrow .tail { fill: var(--primary-blue); opacity: .95; }
+    #pins text { fill: #000; font-size: 15px; font-weight: 600; paint-order: stroke; stroke: white; stroke-width: 2.5px; stroke-linecap: round; stroke-linejoin: round; }
+    @media (max-width: 700px) {
+      .top-bar { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; }
+      .logo-container { order: 1; }
+      .created-by { order: 2; font-size: 12px; }
+      .search-wrapper { order: 3; width: 100%; }
     }
-    button:hover { border-color:#2b3c5e }
-    input[type="file"] { display:none }
-    label.file { cursor:pointer }
-    .chip { color:var(--muted); }
-    .chip.active { color:var(--ink); border-color:var(--accent) }
-    .right { margin-left:auto }
-    #canvasWrap { position:relative; flex:1; overflow:auto; }
-    #board {
-      position:relative; width:1600px; height:900px; margin:1rem auto;
-      background:#0d1524 url('https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat;
-      border:1px solid var(--border); border-radius:12px;
-    }
-    svg.routes { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
-    .pin, .you {
-      position:absolute; transform:translate(-50%,-100%);
-      padding:.2rem .35rem; background:#1b2740; border:1px solid var(--border);
-      border-radius: 8px; white-space:nowrap; font-size:12px;
-    }
-    .pin::before, .you::before {
-      content:""; position:absolute; left:50%; bottom:-6px; width:0; height:0; transform:translateX(-50%);
-      border-left:6px solid transparent; border-right:6px solid transparent; border-top:6px solid #1b2740;
-    }
-    .pin .dot { display:inline-block; width:8px; height:8px; border-radius:999px; background:var(--accent); margin-right:.35rem; }
-    .you { background:#10311f; border-color:#1d5d3b }
-    .you::before { border-top-color:#10311f }
-    .legend { position:absolute; right:12px; bottom:12px; background:#0f1628; border:1px solid var(--border); padding:.6rem .8rem; border-radius:10px; color:var(--muted) }
-    .hint { color:var(--muted); font-size:12px; }
   </style>
 </head>
 <body>
-  <header>
-    <strong>Mapit</strong>
-    <span class="chip" id="modeChip">Mode: <b>user</b></span>
-    <button id="toggleMode">Switch to Dev</button>
-    <button id="unlockDev" title="Unlock dev actions">Unlock</button>
-    <span class="spacer"></span>
+  <div class="bg-mesh"><canvas id="mesh"></canvas></div>
+  <div class="app-container">
+    <aside class="dev-panel" id="devPanel">
+        <h3>Mode</h3><button class="btn" id="goUserMode">Switch to User Mode</button><div class="vsep"></div>
+        <h3>Locations</h3><div class="grid"><button class="btn" id="addPoint">+ Add point</button><button class="btn" id="setHere">Set "You are here"</button></div><div class="vsep"></div>
+        <h3>Routing</h3><div><label for="fromSel">From</label><select id="fromSel"></select></div><div><label for="toSel">To</label><select id="toSel"></select></div>
+        <div class="grid"><button class="btn" id="btnDraw">Draw path</button><button class="btn" id="btnUndo" disabled>Undo</button></div>
+        <button class="btn primary" id="btnSave" disabled style="margin-top: 8px;">Save route</button><button class="btn danger" id="btnDelete" style="margin-top: 8px;">Delete route</button><div class="vsep"></div>
+        <h3>Data Management</h3><div class="grid"><button class="btn" id="btnExport">Export JSON</button><label class="btn" for="importFile">Import JSON</label><input id="importFile" class="hidden" type="file" accept="application/json" /></div>
+    </aside>
 
-    <label class="file"><input id="importFile" type="file" accept="application/json"/>Import JSON</label>
-    <button id="exportJson">Export JSON</button>
-    <span class="spacer"></span>
-
-    <button id="addMarker">Add Marker</button>
-    <button id="setYou">Set “You”</button>
-    <button id="startRoute">Draw Route</button>
-    <button id="saveRoute">Save Route</button>
-    <button id="clearRoute">Clear Route</button>
-  </header>
-
-  <div id="canvasWrap">
-    <div id="board">
-      <svg class="routes" id="routeSvg"></svg>
-      <!-- pins are injected here -->
-      <div class="legend">
-        <div class="hint">Dev: add pins/you/draw route, then save.</div>
-        <div class="hint">User: view & interact only.</div>
+    <main class="map-container">
+      <svg id="svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <image id="bg" href="image.png" x="0" y="0" width="100" height="100" /><g id="pins"></g><path id="routeBg" d=""></path><path id="route" d=""></path><path id="draft" d=""></path>
+          <!-- Arrow head removed below -->
+          <g id="arrow" transform="translate(-5,-5)"><path class="tail" d="M-0,-0 L-0,0 L-0,0 Z" /></g>
+      </svg>
+      <div class="ui-overlay top-bar">
+        <div class="logo-container"><img src="logo.png" alt="Logo"></div>
+        <div class="search-wrapper"><div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="searchInput" placeholder="Search"></div></div>
+        <a href="https://awaizahmed.com" target="_blank" class="created-by">Created by Awaiz Ahmed</a>
       </div>
-    </div>
+      <div class="side-controls">
+        <div class="dev-mode-btn" id="goDevMode"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+        <div class="dev-mode-btn" id="rotateMap"><i class="fa-solid fa-rotate"></i></div>
+      </div>
+      <div class="ui-overlay bottom-bar"><div class="category-filters" id="category-filters"><div class="category-item active" data-category="all"><span class="icon walk"><i class="fa-solid fa-map-location-dot"></i></span><span>All</span></div><div class="category-item" data-category="offices"><span class="icon offices"><i class="fa-solid fa-building"></i></span><span>Offices</span></div><div class="category-item" data-category="training"><span class="icon training"><i class="fa-solid fa-chalkboard-user"></i></span><span>Training</span></div><div class="category-item" data-category="services"><span class="icon services"><i class="fa-solid fa-info-circle"></i></span><span>Services</span></div></div></div>
+    </main>
   </div>
 
-  <!-- Firebase (compat so legacy firebase.firestore() works) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script>
-    // =========================
-    //  Firebase initialization
-    // =========================
-    // TODO: paste your Firebase config here from the console
-    // const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "...", ... };
-    const firebaseConfig = {
-      apiKey: "AIzaSyDqwJLEhoTUI8qiUHnoSMioq4oQhTAgmks",
-      authDomain: "mapit-e2534.firebaseapp.com",
-      projectId: "mapit-e2534",
-      storageBucket: "mapit-e2534.firebasestorage.app",
-      messagingSenderId: "584091763757",
-      appId: "1:584091763757:web:6aff9a34a807b4e3c024a4"
-    };
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const mapDocRef = db.collection("maps").doc("main-map-data");
-
-    // =========================
-    //  State
-    // =========================
-    let MARKERS = {};  // { id: {x,y,label} }
-    let ROUTES  = {};  // { id: [ {x,y}, ... ] }
-    let YOU_POS = null; // {x,y}
-
-    let mode = 'user';
-    let devUnlocked = false;
-
-    // drawing helpers
-    let placing = null;        // 'marker' | 'you' | null
-    let drawing = false;       // route drawing mode
-    let currentRoutePoints = [];
-    let routeCounter = 1;
-
-    // versioning (prevents stale snapshot from clobbering fresh import/save)
-    let lastWriteVersion = 0;
-
-    // =========================
-    //  DOM helpers
-    // =========================
-    const board = document.getElementById('board');
-    const svg = document.getElementById('routeSvg');
-    const modeChip = document.getElementById('modeChip');
-
-    function px(val) { return Math.round(val) + 'px'; }
-
-    function boardPos(e) {
-      const rect = board.getBoundingClientRect();
-      const x = (e.clientX - rect.left) / rect.width;
-      const y = (e.clientY - rect.top)  / rect.height;
-      return { x: Math.max(0,Math.min(1,x)), y: Math.max(0,Math.min(1,y)) };
-    }
-
-    // =========================
-    //  Local cache
-    // =========================
-    function persistLocal() {
-      try {
-        localStorage.setItem('mapit-data', JSON.stringify({ markers: MARKERS, routes: ROUTES, you: YOU_POS }));
-      } catch {}
-    }
-    function loadFromLocal() {
-      try {
-        const raw = localStorage.getItem('mapit-data');
-        if (!raw) return;
-        const d = JSON.parse(raw);
-        MARKERS = d.markers || {};
-        ROUTES  = d.routes  || {};
-        YOU_POS = d.you || null;
-      } catch {}
-    }
-
-    // =========================
-    //  Rendering
-    // =========================
-    function clearPins() {
-      [...board.querySelectorAll('.pin, .you')].forEach(n => n.remove());
-    }
-
-    function renderPins() {
-      clearPins();
-      // you
-      if (YOU_POS) {
-        const el = document.createElement('div');
-        el.className = 'you';
-        el.textContent = 'You';
-        el.style.left = px(YOU_POS.x * board.clientWidth);
-        el.style.top  = px(YOU_POS.y * board.clientHeight);
-        board.appendChild(el);
+    (function(){
+      const canvas = document.getElementById('mesh'); if(!canvas) return; const ctx = canvas.getContext('2d');
+      let w=0,h=0,dpr=1, nodes=[], maxLinks=110, nodeCount=0;
+      const MAX_D = 140, DOT_R = 1.5, SPEED = 0.06; let last=0, hueBase=210;
+      function resize(){
+        dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1)); w = canvas.clientWidth; h = canvas.clientHeight; canvas.width = w*dpr; canvas.height = h*dpr;
+        ctx.setTransform(dpr,0,0,dpr,0,0); nodeCount = Math.max(40, Math.min(120, Math.floor((w*h)/18000))); spawnNodes();
       }
-      // markers
-      Object.entries(MARKERS).forEach(([id, m]) => {
-        const el = document.createElement('div');
-        el.className = 'pin';
-        el.innerHTML = `<span class="dot"></span>${m.label || id}`;
-        el.style.left = px(m.x * board.clientWidth);
-        el.style.top  = px(m.y * board.clientHeight);
-        board.appendChild(el);
+      function spawnNodes(){ nodes = new Array(nodeCount).fill(0).map(()=>({ x: Math.random()*w, y: Math.random()*h, vx:(Math.random()*2-1)*SPEED, vy:(Math.random()*2-1)*SPEED })); }
+      function step(ts){
+        if(!last) last = ts; const dt = ts - last; last = ts; ctx.clearRect(0,0,w,h); const hue = (hueBase + (ts/80))%360;
+        for(const n of nodes){ n.x += n.vx * dt; n.y += n.vy * dt; if(n.x<0||n.x>w) n.vx*=-1; if(n.y<0||n.y>h) n.vy*=-1; }
+        ctx.lineWidth = 1; let links = 0;
+        for(let i=0;i<nodes.length;i++){
+          const a = nodes[i];
+          for(let j=i+1;j<nodes.length;j++){
+            const b = nodes[j], dx=a.x-b.x, dy=a.y-b.y, d = Math.hypot(dx,dy);
+            if(d<MAX_D){
+              const alpha = (1 - d/MAX_D) * 0.18; ctx.strokeStyle = `hsla(${hue}, 30%, 75%, ${alpha})`;
+              ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+              if(++links>nodeCount*3 || links>maxLinks) break;
+            }
+          }
+        }
+        ctx.fillStyle = 'rgba(255,255,255,0.15)'; for(const n of nodes){ ctx.beginPath(); ctx.arc(n.x, n.y, DOT_R, 0, Math.PI*2); ctx.fill(); }
+        requestAnimationFrame(step);
+      }
+      resize(); requestAnimationFrame(step); window.addEventListener('resize', resize);
+    })();
+
+    (function(){
+      const firebaseConfig = {
+        apiKey: "AIzaSyDqwJLEhoTUI8qiUHnoSMioq4oQhTAgmks", authDomain: "mapit-e2534.firebaseapp.com", projectId: "mapit-e2534",
+        storageBucket: "mapit-e2534.firebasestorage.app", messagingSenderId: "584091763757", appId: "1:584091763757:web:6aff9a34a807b4e3c024a4"
+      };
+      firebase.initializeApp(firebaseConfig); const db = firebase.firestore(); const mapDocRef = db.collection("maps").doc("main-map-data");
+
+      const $=q=>document.querySelector(q);
+      const svg=$('#svg'), pinsLayer=$('#pins'), route=$('#route'), routeBg=$('#routeBg'), bg=$('#bg'), arrow=$('#arrow'), draft=$('#draft'), searchInput=$('#searchInput');
+      const goDevMode=$('#goDevMode'), goUserMode=$('#goUserMode'), fromSel=$('#fromSel'), toSel=$('#toSel');
+      const addPointBtn=$('#addPoint'), setHereBtn=$('#setHere'), btnDraw=$('#btnDraw'), btnUndo=$('#btnUndo');
+      const btnSave=$('#btnSave'), btnDelete=$('#btnDelete'), btnExport=$('#btnExport'), importFile=$('#importFile');
+      const rotateMapBtn = $('#rotateMap');
+
+      let ROUTES={}, MARKERS={}, YOU_POS=null;
+      let mode='user', placing=null, drawing=false, points=[], anim=null, devUnlocked=false, rotation = 0;
+
+      function loadData() {
+        mapDocRef.onSnapshot(doc => {
+          if (doc.exists) {
+            const data = doc.data();
+            ROUTES = data.routes || {}; MARKERS = data.markers || {}; YOU_POS = data.you || null;
+            renderPins(document.querySelector('.category-item.active')?.dataset.category || 'all');
+            fillSelects();
+          }
+        }, error => console.error("Error listening to map data:", error));
+      }
+
+      function saveDataToFirebase(force = false) {
+        if ((mode !== 'dev' || !devUnlocked) && !force) return;
+        mapDocRef
+          .set({ markers: MARKERS, routes: ROUTES, you: YOU_POS }, { merge: true })
+          .catch(error => console.error("Error saving to Firebase:", error));
+      }
+
+
+      function setMode(newMode) {
+        if (newMode === 'dev' && !devUnlocked) {
+            const u=prompt('Username:'), p=prompt('Password:');
+            if (u==='awaiz' && p==='1234') devUnlocked = true; else { alert('Access denied.'); return; }
+        }
+        mode = newMode; document.body.classList.toggle('dev-mode', mode === 'dev'); clearRoute(); renderPins();
+      }
+      
+      function fitToImage(){
+        const img=new Image();
+        img.onload=()=>{
+            const W=img.naturalWidth||768, H=img.naturalHeight||1344;
+            svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+            bg.setAttribute('width',W);
+            bg.setAttribute('height',H);
+            renderPins();
+            
+            const panzoomScript = document.createElement('script');
+            panzoomScript.src = 'https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js';
+            panzoomScript.onload = () => {
+                const container = svg.parentElement;
+                if (!container) return;
+
+                const containerWidth = container.clientWidth;
+                const containerHeight = container.clientHeight;
+                
+                const scaleX = containerWidth / W;
+                const scaleY = containerHeight / H;
+                const startScale = Math.min(scaleX, scaleY);
+
+                Panzoom(svg, {
+                    maxScale: 15, // Increased max zoom for more detail
+                    minScale: 0.3, // Allow zooming out further
+                    startScale: startScale, // Start zoomed to fit the whole map
+                    // No 'contain' property for maximum panning freedom
+                });
+            };
+            document.body.appendChild(panzoomScript);
+        };
+        img.src=bg.getAttribute('href');
+      }
+
+      const keyFor = (f, t) => f + '→' + t;
+      function drawPathD(list) { if (!list || !list.length) return ''; const a = list[0]; return 'M ' + a.x + ' ' + a.y + ' L ' + list.map(p => p.x + ' ' + p.y).join(' '); }
+      function clearRoute() { route.setAttribute('d', ''); routeBg.setAttribute('d', ''); draft.setAttribute('d', ''); if (anim) cancelAnimationFrame(anim); arrow.setAttribute('transform', 'translate(-100,-100)'); }
+      const ns = tag => document.createElementNS('http://www.w3.org/2000/svg', tag);
+      
+      function renderPins(filterCategory = 'all') {
+          if (!MARKERS || !bg.getAttribute('width')) return;
+          pinsLayer.innerHTML = ''; const W = parseInt(bg.getAttribute('width')), H = parseInt(bg.getAttribute('height'));
+          const transform = `rotate(${rotation} ${W/2} ${H/2})`;
+          
+          Object.entries(MARKERS).forEach(([name, p]) => {
+              const categoryOfMarker = p.category || 'general';
+              if (mode === 'user' && filterCategory !== 'all' && categoryOfMarker !== filterCategory) return;
+              const g = ns('g'); g.setAttribute('transform', `translate(${p.x},${p.y})`); g.style.cursor = 'pointer';
+              const c = ns('circle'); c.setAttribute('r', 8); c.style.fill = (mode === 'dev' ? '#7c3aed' : '#ef4444'); c.style.stroke = 'white'; c.style.strokeWidth = '2';
+              const t = ns('text'); t.setAttribute('x', 0); t.setAttribute('y', 24); t.textContent = name; t.setAttribute('text-anchor', 'middle');
+              g.append(c, t); g.addEventListener('click', () => { if (mode === 'user') navigateTo(name); });
+              pinsLayer.appendChild(g);
+          });
+          if (YOU_POS) {
+              const g = ns('g'); g.setAttribute('transform', `translate(${YOU_POS.x},${YOU_POS.y})`);
+              const c = ns('circle'); c.setAttribute('r', 7); c.style.fill = '#007aff'; c.style.stroke = 'white'; c.style.strokeWidth = '3';
+              const t = ns('text'); t.setAttribute('x', 0); t.setAttribute('y', -16); t.textContent = 'You are here'; t.setAttribute('text-anchor', 'middle'); t.style.fontSize = '16px';
+              g.append(c, t); pinsLayer.appendChild(g);
+          }
+          [bg, pinsLayer, route, routeBg, draft].forEach(el => el.setAttribute('transform', transform));
+      }
+      
+      function showRoute(fromKey, toKey) { clearRoute(); if (!fromKey || !toKey || !ROUTES) return; const arr = ROUTES[keyFor(fromKey, toKey)]; if (!arr || !arr.length) return; const d = drawPathD(arr); route.setAttribute('d', d); routeBg.setAttribute('d', d); animateAlong(route); }
+      
+      function animateAlong(path) {
+          const L = path.getTotalLength(); if (L === 0) return; let t0 = null; const dur = Math.max(2000, L * 5);
+          function step(ts) {
+              if (anim === null) return;
+              if (!t0) t0 = ts; const dlen = ((ts - t0) % dur) / dur * L;
+              
+              const current_pos = path.getPointAtLength(dlen);
+              const ahead_pos = path.getPointAtLength(Math.min(dlen + 5, L));
+              const matrix = path.getScreenCTM();
+              
+              const p1 = svg.createSVGPoint(); p1.x = current_pos.x; p1.y = current_pos.y;
+              const p2 = svg.createSVGPoint(); p2.x = ahead_pos.x; p2.y = ahead_pos.y;
+              
+              const final_p1 = p1.matrixTransform(matrix);
+              const final_p2 = p2.matrixTransform(matrix);
+              
+              const angle = Math.atan2(final_p2.y - final_p1.y, final_p2.x - final_p1.x) * 180 / Math.PI;
+
+              arrow.setAttribute('transform', `translate(${final_p1.x},${final_p1.y}) rotate(${angle})`);
+              anim = requestAnimationFrame(step);
+          }
+          if (anim) cancelAnimationFrame(anim);
+          anim = requestAnimationFrame(step);
+      }
+      
+      const navigateTo = name => { if (!YOU_POS) return; showRoute('YOU', name); searchInput.value = name; };
+      const addOpt = (el, val, txt) => { const o = document.createElement('option'); o.value = val; o.textContent = txt; el.appendChild(o); };
+      function fillSelects() { if (!fromSel || !toSel) return; fromSel.innerHTML = ''; toSel.innerHTML = ''; addOpt(fromSel, 'YOU', 'You are here'); Object.keys(MARKERS).sort().forEach(n => { addOpt(fromSel, n, n); addOpt(toSel, n, n); }); }
+
+      goDevMode.addEventListener('click', () => setMode('dev')); goUserMode.addEventListener('click', () => setMode('user'));
+      addPointBtn.addEventListener('click', () => { placing = 'point'; }); setHereBtn.addEventListener('click', () => { placing = 'here'; });
+      btnDraw.addEventListener('click', () => { if (!toSel.value) return alert('Choose a destination.'); drawing = true; points = []; btnUndo.disabled = false; btnSave.disabled = false; draft.setAttribute('d', ''); });
+      btnUndo.addEventListener('click', () => { if (!drawing || !points.length) return; points.pop(); draft.setAttribute('d', drawPathD(points)); });
+      btnSave.addEventListener('click', () => { if (!drawing || !points.length) return; const from = fromSel.value || 'YOU', to = toSel.value; ROUTES[keyFor(from, to)] = points.slice(); saveDataToFirebase(); drawing = false; points = []; draft.setAttribute('d', ''); btnUndo.disabled = true; btnSave.disabled = true; showRoute(from, to); });
+      btnDelete.addEventListener('click', () => { const from = fromSel.value || 'YOU', to = toSel.value; if (!to) return alert('Select a route to delete.'); const k = keyFor(from, to); if (ROUTES[k] && confirm(`Delete route: ${from} to ${to}?`)) { delete ROUTES[k]; saveDataToFirebase(); clearRoute(); } });
+      btnExport.addEventListener('click', () => { const dataStr = JSON.stringify({ markers: MARKERS, you: YOU_POS, routes: ROUTES }, null, 2); const blob = new Blob([dataStr], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'wayfinding-data.json'; a.click(); URL.revokeObjectURL(url); });
+      importFile.addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(text => { const data = JSON.parse(text); MARKERS = data.markers || {}; YOU_POS = data.you || null; ROUTES = data.routes || {}; saveDataToFirebase(); renderPins(); }).catch(err => alert('Invalid JSON.')); importFile.value = ''; });
+      
+      const svgPoint = e => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
+      svg.addEventListener('click', e => {
+          if (mode !== 'dev') return; const p = svgPoint(e);
+          if (placing) {
+              if (placing === 'point') {
+                  const name = prompt('Location name:');
+                  if (name && name.trim()) {
+                      const cat = prompt('Category: (offices, training, services)', 'general');
+                      MARKERS[name.trim()] = { x: Math.round(p.x), y: Math.round(p.y), category: cat ? cat.trim().toLowerCase() : 'general' };
+                      saveDataToFirebase();
+                  }
+              } else if (placing === 'here') { YOU_POS = { x: Math.round(p.x), y: Math.round(p.y) }; saveDataToFirebase(); }
+              placing = null;
+          } else if (drawing) { points.push({ x: Math.round(p.x), y: Math.round(p.y) }); draft.setAttribute('d', drawPathD(points)); }
       });
-    }
-
-    function renderRoutes() {
-      svg.innerHTML = '';
-      Object.values(ROUTES).forEach(points => {
-        if (!Array.isArray(points) || points.length < 2) return;
-        const d = points.map((p, i) => `${i ? 'L':'M'} ${p.x*100} ${p.y*100}`).join(' ');
-        const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-        path.setAttribute('d', d);
-        path.setAttribute('vector-effect','non-scaling-stroke');
-        path.setAttribute('fill','none');
-        path.setAttribute('stroke-width','3');
-        // leave stroke color to default (tooling rule)
-        svg.appendChild(path);
+      window.addEventListener('keydown', e => { if (drawing && e.key === 'Enter') btnSave.click(); if (drawing && e.key === 'Escape') { drawing = false; points = []; draft.setAttribute('d', ''); btnUndo.disabled = true; btnSave.disabled = true; } });
+      $('#category-filters').addEventListener('click', e => { const item = e.target.closest('.category-item'); if (!item) return; $('#category-filters .active').classList.remove('active'); item.classList.add('active'); clearRoute(); renderPins(item.dataset.category); });
+      rotateMapBtn.addEventListener('click', () => { rotation = (rotation + 90) % 360; renderPins(); const currentRoute = route.getAttribute('d'); if(currentRoute) { animateAlong(route) } });
+      
+      searchInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+              const query = searchInput.value.trim().toLowerCase();
+              if (!query) { clearRoute(); return; }
+              const matchedKey = Object.keys(MARKERS).find(key => key.trim().toLowerCase() === query);
+              if (matchedKey) { navigateTo(matchedKey); } else { alert('Location not found.'); }
+          }
       });
-      // current (unsaved) route being drawn
-      if (drawing && currentRoutePoints.length >= 1) {
-        const d = currentRoutePoints.map((p, i) => `${i ? 'L':'M'} ${p.x*100} ${p.y*100}`).join(' ');
-        const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-        path.setAttribute('d', d);
-        path.setAttribute('vector-effect','non-scaling-stroke');
-        path.setAttribute('fill','none');
-        path.setAttribute('stroke-width','2');
-        svg.appendChild(path);
-      }
-    }
-
-    function renderAll() { renderRoutes(); renderPins(); }
-
-    // =========================
-    //  Firestore I/O (versioned)
-    // =========================
-    function saveDataToFirebase(force=false) {
-      if ((mode !== 'dev' || !devUnlocked) && !force) return;
-      const ver = Date.now();
-      lastWriteVersion = ver;
-      persistLocal();
-      return mapDocRef.set(
-        {
-          markers: MARKERS,
-          routes: ROUTES,
-          you: YOU_POS,
-          version: ver,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      ).catch(err => {
-        console.error('Save error:', err);
-        alert('Cloud save failed. Data kept locally.');
-      });
-    }
-
-    function loadData() {
-      mapDocRef.onSnapshot(doc => {
-        if (!doc.exists) { renderAll(); return; }
-        const data = doc.data() || {};
-
-        // Ignore stale snapshots
-        if (data.version && lastWriteVersion && data.version < lastWriteVersion) return;
-
-        MARKERS = data.markers || {};
-        ROUTES  = data.routes  || {};
-        YOU_POS = data.you || null;
-
-        persistLocal();
-        renderAll();
-      }, err => console.error('Snapshot error:', err));
-    }
-
-    // =========================
-    //  UI interactions
-    // =========================
-    document.getElementById('toggleMode').addEventListener('click', () => {
-      mode = (mode === 'user') ? 'dev' : 'user';
-      document.getElementById('toggleMode').textContent = mode === 'dev' ? 'Switch to User' : 'Switch to Dev';
-      modeChip.innerHTML = `Mode: <b>${mode}</b>`;
-    });
-
-    document.getElementById('unlockDev').addEventListener('click', () => {
-      if (mode !== 'dev') { alert('Switch to Dev first.'); return; }
-      devUnlocked = !devUnlocked;
-      document.getElementById('unlockDev').textContent = devUnlocked ? 'Lock' : 'Unlock';
-    });
-
-    // place marker
-    document.getElementById('addMarker').addEventListener('click', () => {
-      if (mode !== 'dev' || !devUnlocked) return alert('Unlock in Dev mode to add markers.');
-      placing = 'marker';
-    });
-
-    // set "you"
-    document.getElementById('setYou').addEventListener('click', () => {
-      if (mode !== 'dev' || !devUnlocked) return alert('Unlock in Dev mode to set position.');
-      placing = 'you';
-    });
-
-    // draw route
-    document.getElementById('startRoute').addEventListener('click', () => {
-      if (mode !== 'dev' || !devUnlocked) return alert('Unlock in Dev mode to draw routes.');
-      drawing = true;
-      currentRoutePoints = [];
-      renderRoutes();
-    });
-
-    document.getElementById('saveRoute').addEventListener('click', () => {
-      if (!drawing || currentRoutePoints.length < 2) return alert('Draw at least two points.');
-      if (!ROUTES || typeof ROUTES !== 'object') ROUTES = {};
-      const id = 'route-' + (routeCounter++);
-      ROUTES[id] = currentRoutePoints.slice();
-      drawing = false;
-      currentRoutePoints = [];
-      renderRoutes();
-      saveDataToFirebase(); // normal save (dev+unlocked)
-    });
-
-    document.getElementById('clearRoute').addEventListener('click', () => {
-      drawing = false; currentRoutePoints = []; renderRoutes();
-    });
-
-    // board click handler
-    board.addEventListener('click', (e) => {
-      const p = boardPos(e);
-      if (placing === 'marker') {
-        const id = 'pin-' + Math.random().toString(36).slice(2,7);
-        MARKERS[id] = { x:p.x, y:p.y, label:'Pin' };
-        placing = null;
-        renderPins();
-        saveDataToFirebase();
-        return;
-      }
-      if (placing === 'you') {
-        YOU_POS = { x:p.x, y:p.y };
-        placing = null;
-        renderPins();
-        saveDataToFirebase();
-        return;
-      }
-      if (drawing) {
-        currentRoutePoints.push(p);
-        renderRoutes();
-      }
-    });
-
-    // =========================
-    //  Import / Export
-    // =========================
-    document.getElementById('exportJson').addEventListener('click', () => {
-      const payload = { markers: MARKERS, routes: ROUTES, you: YOU_POS || null };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'wayfinding-data.json';
-      a.click();
-      URL.revokeObjectURL(a.href);
-    });
-
-    document.getElementById('importFile').addEventListener('change', (e) => {
-      const f = e.target.files[0];
-      if (!f) return;
-      f.text().then(text => {
-        const data = JSON.parse(text);
-        MARKERS = data.markers || {};
-        ROUTES  = (data.routes && typeof data.routes === 'object') ? data.routes : {};
-        YOU_POS = data.you || null;
-
-        persistLocal();
-        renderAll();
-        // Force save so user mode sees the imported data immediately
-        saveDataToFirebase(true);
-      }).catch(() => alert('Invalid JSON'));
-      e.target.value = '';
-    });
-
-    // =========================
-    //  Boot
-    // =========================
-    loadFromLocal();
-    renderAll();
-    loadData();
+      searchInput.addEventListener('input', () => { if (searchInput.value.trim() === '') clearRoute(); });
+      
+      fitToImage();
+      loadData();
+    })();
   </script>
 </body>
 </html>
