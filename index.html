@@ -269,8 +269,18 @@
       btnSave.addEventListener('click', () => { if (!drawing || !points.length) return; const from = fromSel.value || 'YOU', to = toSel.value; ROUTES[keyFor(from, to)] = points.slice(); saveDataToFirebase(); drawing = false; points = []; draft.setAttribute('d', ''); btnUndo.disabled = true; btnSave.disabled = true; showRoute(from, to); });
       btnDelete.addEventListener('click', () => { const from = fromSel.value || 'YOU', to = toSel.value; if (!to) return alert('Select a route to delete.'); const k = keyFor(from, to); if (ROUTES[k] && confirm(`Delete route: ${from} to ${to}?`)) { delete ROUTES[k]; saveDataToFirebase(); clearRoute(); } });
       btnExport.addEventListener('click', () => { const dataStr = JSON.stringify({ markers: MARKERS, you: YOU_POS, routes: ROUTES }, null, 2); const blob = new Blob([dataStr], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'wayfinding-data.json'; a.click(); URL.revokeObjectURL(url); });
-      importFile.addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(text => { const data = JSON.parse(text); MARKERS = data.markers || {}; YOU_POS = data.you || null; ROUTES = data.routes || {}; saveDataToFirebase(); renderPins(); }).catch(err => alert('Invalid JSON.')); importFile.value = ''; });
-      
+      importFile.addEventListener('change', e => { 
+    const f = e.target.files[0]; if (!f) return; 
+    f.text().then(text => { 
+        const data = JSON.parse(text); 
+        MARKERS = data.markers || {}; 
+        YOU_POS = data.you || null; 
+        ROUTES = data.routes || {}; 
+        saveDataToFirebase(true); // <--- LIKE THIS
+        renderPins(); 
+    }).catch(err => alert('Invalid JSON.')); 
+    importFile.value = ''; 
+    });
       const svgPoint = e => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
       svg.addEventListener('click', e => {
           if (mode !== 'dev') return; const p = svgPoint(e);
