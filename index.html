@@ -2,526 +2,304 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wayfinding Map — EDGE Style</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <title>Wayfinding Map</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <style>
-    :root{
-      --edge-orange:#e09560;
-      --edge-orange-d:#eb985c;
-      --panel:#15181d;
-      --panel-ink:#c7d0dc;
-      --border:#262c34;
-      --ink:#eef3fb;
-      --muted:#8a96a8;
-      --ink-soft:#c0c8d5;
-      --route-bg:#2a3038;
-      --logoH: 80px; /* user-mode logo height */
-
-      /* ==== Animated Nebula Gradient (your colors) ==== */
-      --nebula-start:#1c1d24;
-      --nebula-mid-orange:#6e6560;
-      --nebula-mid-grey:#2e3034;
-      --nebula-end:#0c0d12;
+    :root {
+      --panel: #ffffff; --border: #e0e0e0; --ink: #333333; --primary-blue: #4488d0; --dev-panel-bg: #81a9d0;
+      --nebula-start: #1c1d24; --nebula-mid-orange: #d6cac2;
+      --nebula-mid-grey: #a7aab1; --nebula-end: #3f4049;
     }
-
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0; color:var(--ink);
-      font:14px/1.5 Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
-      overflow:hidden; /* lock page scroll */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background: conic-gradient(at 0% 50%,
-        var(--nebula-start) 0%,
-        var(--nebula-mid-orange) 20%,
-        var(--nebula-start) 35%,
-        var(--nebula-mid-grey) 65%,
-        var(--nebula-start) 80%,
-        var(--nebula-end) 100%);
-      background-size:200% 200%;
+        var(--nebula-start) 0%, var(--nebula-mid-orange) 20%,
+        var(--nebula-start) 35%, var(--nebula-mid-grey) 65%,
+        var(--nebula-start) 80%, var(--nebula-end) 100%);
+      background-size: 200% 200%;
       animation: panBackground 60s linear infinite alternate;
     }
-    @keyframes panBackground{
-      0%{background-position:0% 0%}
-      100%{background-position:100% 100%}
+    @keyframes panBackground { 0% { background-position: 0% 0%; } 100% { background-position: 100% 100%; } }
+    .bg-mesh { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
+    #mesh { display: block; width: 100%; height: 100%; }
+    .app-container { display: flex; width: 100%; height: 100%; position: relative; z-index: 1; }
+    .dev-panel { width: 280px; background: var(--dev-panel-bg); border-right: 1px solid var(--border); padding: 12px; display: none; flex-direction: column; gap: 12px; overflow-y: auto; color: #333; }
+    body.dev-mode .dev-panel { display: flex; } .dev-panel h3 { margin: 0 0 4px; font-size: 14px; text-transform: uppercase; color: #666;} .dev-panel .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px;} .dev-panel .vsep { height: 1px; background: var(--border); margin: 8px 0; } .dev-panel .btn { background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 10px 12px; font-size: 14px; cursor: pointer; width: 100%; }
+    .dev-panel .btn:hover { background: #f0f0f0; } .dev-panel .btn.primary { background: var(--primary-blue); color: white; border-color: var(--primary-blue); } .dev-panel .btn.danger { background: #fbecec; color: #dc2626; border-color: #f8d7da; } .dev-panel .btn[disabled] { opacity: .5; cursor: not-allowed; } .dev-panel label { font-size: 14px; margin-bottom: 4px; display: block; } .dev-panel select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc;} .dev-panel .hidden { display: none; }
+    .map-container {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      flex-grow: 1;
+      overflow: hidden; 
+      min-width: 0;
     }
-
-    /* ==== Mesh canvas sits under everything ==== */
-    .bg-mesh{position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none}
-    #mesh{display:block; width:100%; height:100%}
-
-    .app{display:grid;grid-template-rows:auto 1fr auto;min-height:100vh;height:100vh; position:relative; z-index:1}
-
-    /* Header (hidden in user mode) */
-    header{
-      display:flex;gap:14px;align-items:center;justify-content:space-between;position:sticky;
-      padding:18px 16px;border-bottom:1px solid var(--border);background:#0f1318;top:0;z-index:5
+    svg { width: 100%; height: 100%; background: transparent; touch-action: none; cursor: grab; }
+    svg:active { cursor: grabbing; }
+    .ui-overlay { position: absolute; z-index: 10; width: 100%; padding: 0 16px; pointer-events: none; } .ui-overlay > * { pointer-events: auto; }
+    .top-bar { top: 20px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px; }
+    .logo-container { grid-column: 1; justify-self: start; }
+    .logo-container img { height: 44px; width: auto; display: block; }
+    .search-wrapper { grid-column: 2; width: 100%; max-width: 400px; }
+    .search-bar { background: var(--panel); border-radius: 999px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; padding: 10px 16px; height: 44px; margin: 0 auto;} .search-bar i { color: #888; margin-right: 12px; } .search-bar input { border: none; outline: none; width: 100%; font-size: 16px; background: transparent;}
+    .created-by { grid-column: 3; justify-self: end; font-size: 15px; color: white; text-decoration: none; text-shadow: 0 0 8px rgba(255, 255, 255, 0.7); }
+    .side-controls { position: absolute; left: 16px; bottom: 120px; z-index: 10; display: flex; flex-direction: row; gap: 10px; } body.dev-mode .side-controls { display: none; }
+    .dev-mode-btn { background: var(--panel); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); width: 44px; height: 44px; display: grid; place-items: center; cursor: pointer; font-size: 18px; }
+    .bottom-bar { bottom: 0; background: var(--panel); border-top: 1px solid var(--border); padding: 10px 16px 20px; box-shadow: 0 -4px 12px rgba(0,0,0,0.08); } body.dev-mode .bottom-bar { display: none; } .category-filters { display: flex; justify-content: space-around; gap: 8px;} .category-item { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; flex-grow: 1; cursor: pointer; padding: 6px; border-radius: 8px;} .category-item.active, .category-item:hover { background-color: #f0f0f0; }
+    .category-item .icon { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-size: 18px;} .category-item.active .icon { background-color: var(--primary-blue) !important; color: white !important;} .icon.walk { background-color: #e8e8e8; color: #333; } .icon.offices { background-color: #dcfce7; color: #16a34a; } .icon.training { background-color: #ffedd5; color: #9a3412; } .icon.services { background-color: #c20bb3; color: #fffcff; }
+    #routeBg { stroke: #a09898; stroke-width: 9; fill: none; stroke-linecap: round; stroke-linejoin: round;} #route { stroke: #ffffff; stroke-width: 3.5; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 8 10; animation: dash 3s linear infinite; } @keyframes dash { to { stroke-dashoffset: -180; } }
+    #draft{stroke:#9aa9be;stroke-dasharray:6 6;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round} #arrow { filter: drop-shadow(0 2px 4px rgba(0,0,0,.45)); } #arrow .head { fill: var(--primary-blue); stroke: white; stroke-width: 1.5; } #arrow .tail { fill: var(--primary-blue); opacity: .95; }
+    #pins text { fill: #000; font-size: 15px; font-weight: 600; paint-order: stroke; stroke: white; stroke-width: 2.5px; stroke-linecap: round; stroke-linejoin: round; }
+    @media (max-width: 700px) {
+      .top-bar { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; }
+      .logo-container { order: 1; }
+      .created-by { order: 2; font-size: 12px; }
+      .search-wrapper { order: 3; width: 100%; }
     }
-    .brand{display:flex;align-items:center;gap:10px;position:absolute;left:50%;transform:translateX(-50%);pointer-events:none}
-    .logo-img{height:70px;width:auto;display:block;object-fit:contain}
-
-    /* Overlay logo for USER mode */
-    .user-logo{
-      position:fixed; top:10px; left:50%; transform:translateX(-50%);
-      height:var(--logoH); z-index:4; display:none; pointer-events:none;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,.4));
-    }
-    body.user-only .user-logo{display:block;}
-
-    /* Floating "Developer" button (only in user mode) */
-    .dev-toggle{
-      position:fixed; right:16px; bottom:16px; z-index:5; display:none;
-      background:#141a22; color:#fff; border:1px solid var(--border);
-      border-radius:999px; padding:10px 14px; cursor:pointer;
-      box-shadow:0 4px 18px rgba(0,0,0,.35);
-    }
-    .dev-toggle:hover{background:#0f141b}
-    body.user-only .dev-toggle{display:flex; align-items:center; gap:8px}
-
-    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .chip{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:999px;padding:4px 8px;background:#131920;gap:6px;color:#c7d0dc}
-    label.switch{display:inline-grid;grid-template-columns:1fr 1fr;gap:2px;background:#0e1318;border:1px solid var(--border);border-radius:999px;overflow:hidden}
-    label.switch input{display:none}
-    label.switch span{padding:6px 12px;cursor:pointer;user-select:none;color:#c0c8d5}
-    label.switch input:checked + span{background:#141a22;color:#fff;}
-    .status{color:#8a96a8}
-
-    .btn{appearance:none;border:1px solid var(--border);border-radius:10px;background:#141a22;color:#eef3fb;padding:8px 12px;cursor:pointer}
-    .btn:hover{background:#0f141b}
-    .btn[disabled]{opacity:.45;cursor:not-allowed}
-    .btn.primary{background:#ff6a00;border-color:#ff6a00;color:#111}
-    .btn.primary:hover{background:#e65f00}
-    .btn.warn{background:#2b1a00;border-color:#3a2300;color:#ffb266}
-    .btn.danger{background:#2a0d0d;border-color:#3a1414;color:#ff8f8f}
-
-    .layout{display:grid;grid-template-columns:320px 1fr;gap:16px;padding:16px;min-height:0;overflow:hidden}
-    @media (max-width: 980px){ .layout{grid-template-columns:1fr} }
-
-    aside{background:#15181d;border:1px solid var(--border);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0;overflow:auto;color:#c7d0dc}
-    aside h3{margin:6px 0 2px;font-size:12px;color:#cbd5e1;text-transform:uppercase;letter-spacing:.14em}
-    .field{display:flex;flex-direction:column;gap:6px}
-    select,input[type="text"]{width:100%;background:#0f141b;border:1px solid var(--border);color:#e5eefc;border-radius:10px;padding:8px}
-    .vsep{height:1px;background:var(--border);margin:6px 0}
-    .hint{color:#93a1b6;font-size:12px}
-    .stack{display:flex;flex-direction:column;gap:6px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .hidden{display:none !important}
-
-    /* Map */
-    .mapwrap{background:transparent;border:1px solid var(--border);border-radius:14px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:8px;padding:10px;min-height:0;height:100%}
-    .mapbar{display:flex;justify-content:space-between;align-items:center;color:#aeb8c6}
-    svg{width:100%;height:100%;min-height:0;border-radius:10px;background:transparent;flex:1 1 auto}
-
-    /* Route & arrow */
-    /* WHITE route with ORANGE glow */
-   /* Softer white route + gentle orange aura */
-    #routeBg{
-      stroke:#e7e7e7;
-      stroke-width:10;                 /* was 12 */
-      fill:none;
-      stroke-linecap:round;
-      stroke-linejoin:round;
-      filter:url(#orangeAura);        
-    }
-
-    /* Top dashed line stays crisp white – no filter */
-    #route{
-      stroke:#f7cead;                  /* no RGB/gradient */
-      stroke-width:3.5;                /* was 4 */
-      fill:none;
-      stroke-linecap:round;
-      stroke-linejoin:round;
-      stroke-dasharray:10 12;
-      animation:dash 1.2s linear infinite;
-      filter:none;                     /* remove aura here to lighten overall glow */
-    }
-
-
-    @keyframes dash{to{stroke-dashoffset:-220}}
-    #draft{stroke:#9aa9be;stroke-dasharray:6 6;stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
-
-    /* >>> Restyled arrow (white–grey gradient; no RGB animation) */
-    #arrow{filter:drop-shadow(0 2px 4px rgba(0,0,0,.45))}
-    #arrow .head{fill:url(#arrowGrad);stroke:#8d8d8d;stroke-width:1}
-    #arrow .tail{fill:#b3adad;opacity:.95}
-    #arrow .pulse{fill:none;stroke:#979292;stroke-width:2;opacity:.5}
-
-    footer.small{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 16px;color:#9fb0c7;border-top:1px solid var(--border);background:#0f1318}
-
-    /* USER mode: map only, leave a safe gap for logo */
-    body.user-only header, body.user-only aside, body.user-only footer, body.user-only .mapbar{display:none!important}
-    body.user-only .layout{grid-template-columns:1fr; padding:calc(var(--logoH) + 16px) 0 0 0}
-    body.user-only .mapwrap{border:none;border-radius:0;padding:0}
-    body.user-only svg{border-radius:0}
-
-    /* >>> Bottom-left credit (user mode only) */
-    .user-credit{
-      position:fixed; bottom:14px; left:18px;
-      font-size:14px; font-weight:600;
-      padding:6px 14px; border-radius:12px;
-      background:rgba(20,24,30,.55); backdrop-filter:blur(6px);
-      letter-spacing:.5px; z-index:5; display:none;
-      text-decoration:none; white-space:nowrap;
-
-      /* shiny neutral text */
-      background-image:linear-gradient(90deg,#ffffff,#d9d9d9,#ffffff);
-      background-size:200% auto;
-      color:#fff; background-clip:text; -webkit-background-clip:text;
-      -webkit-text-fill-color:transparent;
-      text-shadow:0 0 6px rgba(255,255,255,.6), 0 0 12px rgba(200,200,200,.4);
-      animation:shineMove 4s linear infinite;
-      transition:transform .25s ease, text-shadow .25s ease;
-    }
-    body.user-only .user-credit{display:inline-block}
-    .user-credit:hover{
-      transform:scale(1.05);
-      text-shadow:0 0 10px rgba(255,255,255,.9), 0 0 20px rgba(200,200,200,.7);
-    }
-    @keyframes shineMove{0%{background-position:0% 50%}100%{background-position:200% 50%}}
   </style>
 </head>
 <body>
-  <!-- background mesh under content -->
   <div class="bg-mesh"><canvas id="mesh"></canvas></div>
-
-  <!-- Visible only in USER mode -->
-  <img src="logo.png" alt="Logo" class="user-logo" />
-  <button class="dev-toggle" id="devToggle" title="Switch to Developer mode">🛠️ Developer</button>
-
-  <div class="app">
-    <header>
-      <div class="brand"><img src="logo.png" alt="Logo" class="logo-img" onerror="this.style.display='none'"></div>
-      <div class="row">
-        <div class="chip">
-          <strong style="margin-right:6px">Mode</strong>
-          <label class="switch">
-            <input type="radio" name="mode" id="modeDev"><span>Developer</span>
-            <input type="radio" name="mode" id="modeUser" checked><span>User</span>
-          </label>
-          <button class="btn" id="logoutDev" title="Lock Developer mode">Log out</button>
-        </div>
-        <div id="status" class="status">User mode: click a labeled area to go there. Start is <strong>You are here</strong>.</div>
-      </div>
-    </header>
-
-    <div class="layout">
-      <aside id="devPanel" class="hidden">
-        <h3>Locations</h3>
-        <div class="grid">
-          <button class="btn" id="addPoint">+ Add point</button>
-          <button class="btn" id="setHere">Set “You are here”</button>
-        </div>
-        <div class="vsep"></div>
-        <div class="field"><label for="fromSel">From</label><select id="fromSel"></select></div>
-        <div class="field"><label for="toSel">To</label><select id="toSel"></select></div>
+  <div class="app-container">
+    <aside class="dev-panel" id="devPanel">
+        <h3>Mode</h3><button class="btn" id="goUserMode">Switch to User Mode</button><div class="vsep"></div>
+        <h3>Locations</h3><div class="grid"><button class="btn" id="addPoint">+ Add point</button><button class="btn" id="setHere">Set "You are here"</button></div><div class="vsep"></div>
+        <h3>Routing</h3><div><label for="fromSel">From</label><select id="fromSel"></select></div><div><label for="toSel">To</label><select id="toSel"></select></div>
         <div class="grid"><button class="btn" id="btnDraw">Draw path</button><button class="btn" id="btnUndo" disabled>Undo</button></div>
-        <div class="grid"><button class="btn primary" id="btnSave" disabled>Save route</button><button class="btn danger" id="btnDelete">Delete route</button></div>
-        <div class="vsep"></div>
-        <div class="grid"><button class="btn" id="btnExport">Export JSON</button><label class="btn" for="importFile">Import JSON</label><input id="importFile" class="hidden" type="file" accept="application/json" /></div>
-        <div class="grid"><button class="btn warn" id="btnClearAll">Clear all</button><button class="btn" id="btnListRoutes">List routes</button></div>
-        <div class="stack"><div class="hint">Tip: While drawing, click to add points. Press <span class="kbd">Enter</span> or click <em>Save route</em> to finish. <span class="kbd">Esc</span> cancels.</div></div>
-      </aside>
+        <button class="btn primary" id="btnSave" disabled style="margin-top: 8px;">Save route</button><button class="btn danger" id="btnDelete" style="margin-top: 8px;">Delete route</button><div class="vsep"></div>
+        <h3>Data Management</h3><div class="grid"><button class="btn" id="btnExport">Export JSON</button><label class="btn" for="importFile">Import JSON</label><input id="importFile" class="hidden" type="file" accept="application/json" /></div>
+    </aside>
 
-      <main class="mapwrap">
-        <div class="mapbar">
-          <div class="legend"><span class="pill">Map</span><span>Click labels in <strong>User</strong> mode to navigate.</span></div>
-          <div class="legend"><span class="pill">Pins</span><span class="pill">You are here</span></div>
-        </div>
-
-        <!-- SVG map: viewBox set dynamically to match image size -->
-        <svg id="svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-          <filter id="orangeAura" x="-60%" y="-60%" width="220%" height="220%">
-          <!-- lighter, softer aura -->
-          <feDropShadow dx="0" dy="0" stdDeviation="3"  flood-color="#ffb15c" flood-opacity=".35"/>
-          <feDropShadow dx="0" dy="0" stdDeviation="7"  flood-color="#ffb15c" flood-opacity=".18"/>
-          <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#ffb15c" flood-opacity=".08"/>
-        </filter>
-
-
-
-            <!-- arrow gradient (static, neutral) -->
-            <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="100%" stop-color="#cfcfcf"/>
-            </linearGradient>
-          <image id="bg" href="image.png" x="0" y="0" width="100" height="100" preserveAspectRatio="xMidYMid meet" opacity="0.98" />
-          <g id="pins"></g>
-          <path id="routeBg" d=""></path>
-          <path id="route" d=""></path>
-          <path id="draft" d=""></path>
-          <g id="arrow" transform="translate(-100,-100)">
-            <circle class="pulse" r="0"><animate attributeName="r" values="0;20" dur="1.6s" repeatCount="indefinite"/><animate attributeName="opacity" values=".5;0" dur="1.6s" repeatCount="indefinite"/></circle>
-            <path class="tail" d="M-10,-3 L-2,0 L-10,3 Z"/>
-            <path class="head" d="M0,-6 L16,0 L0,6 L3,0 Z"/>
-          </g>
-        </svg>
-      </main>
-    </div>
-
-    <footer class="small">
-      <div class="credit">Created by Awaiz Ahmed</div><div></div>
-    </footer>
+    <main class="map-container">
+      <svg id="svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+          <image id="bg" href="image.png" x="0" y="0" width="100" height="100" /><g id="pins"></g><path id="routeBg" d=""></path><path id="route" d=""></path><path id="draft" d=""></path>
+          <!-- Arrow head removed below -->
+          <g id="arrow" transform="translate(-5,-5)"><path class="tail" d="M-0,-0 L-0,0 L-0,0 Z" /></g>
+      </svg>
+      <div class="ui-overlay top-bar">
+        <div class="logo-container"><img src="logo.png" alt="Logo"></div>
+        <div class="search-wrapper"><div class="search-bar"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="searchInput" placeholder="Search"></div></div>
+        <a href="https://awaizahmed.com" target="_blank" class="created-by">Created by Awaiz Ahmed</a>
+      </div>
+      <div class="side-controls">
+        <div class="dev-mode-btn" id="goDevMode"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+        <div class="dev-mode-btn" id="rotateMap"><i class="fa-solid fa-rotate"></i></div>
+      </div>
+      <div class="ui-overlay bottom-bar"><div class="category-filters" id="category-filters"><div class="category-item active" data-category="all"><span class="icon walk"><i class="fa-solid fa-map-location-dot"></i></span><span>All</span></div><div class="category-item" data-category="offices"><span class="icon offices"><i class="fa-solid fa-building"></i></span><span>Offices</span></div><div class="category-item" data-category="training"><span class="icon training"><i class="fa-solid fa-chalkboard-user"></i></span><span>Training</span></div><div class="category-item" data-category="services"><span class="icon services"><i class="fa-solid fa-info-circle"></i></span><span>Services</span></div></div></div>
+    </main>
   </div>
 
-  <!-- User-mode credit link -->
-  <a href="https://awaizahmed.com" target="_blank" rel="noopener noreferrer" class="user-credit">Created by Awaiz</a>
-
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
   <script>
-  /* ---------- mesh background (subtle, performant) ---------- */
-  (function(){
-    const canvas = document.getElementById('mesh');
-    if(!canvas) return;
-    const ctx = canvas.getContext('2d');
-    let w=0,h=0,dpr=1, nodes=[], maxLinks=110, nodeCount=0;
-    const MAX_D = 140;     // link radius (px)
-    const DOT_R = 1.5;     // dot radius (px)
-    const SPEED = 0.06;    // base speed (px/ms)
-    let last=0, hueBase=210;
-
-    function resize(){
-      dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
-      w = canvas.clientWidth;
-      h = canvas.clientHeight;
-      canvas.width = w*dpr;
-      canvas.height = h*dpr;
-      ctx.setTransform(dpr,0,0,dpr,0,0);
-
-      // number of nodes scales with area (cap for perf)
-      nodeCount = Math.max(40, Math.min(120, Math.floor((w*h)/18000)));
-      spawnNodes();
-    }
-    function spawnNodes(){
-      nodes = new Array(nodeCount).fill(0).map(()=>({
-        x: Math.random()*w,
-        y: Math.random()*h,
-        vx:(Math.random()*2-1)*SPEED,
-        vy:(Math.random()*2-1)*SPEED
-      }));
-    }
-    function step(ts){
-      if(!last) last = ts;
-      const dt = ts - last; last = ts;
-
-      // soft clear
-      ctx.clearRect(0,0,w,h);
-      // drift hue slightly over time (cool→warm→cool)
-      const hue = (hueBase + (ts/80))%360;
-
-      // move
-      for(const n of nodes){
-        n.x += n.vx * dt;
-        n.y += n.vy * dt;
-        if(n.x<0||n.x>w) n.vx*=-1;
-        if(n.y<0||n.y>h) n.vy*=-1;
+    (function(){
+      const canvas = document.getElementById('mesh'); if(!canvas) return; const ctx = canvas.getContext('2d');
+      let w=0,h=0,dpr=1, nodes=[], maxLinks=110, nodeCount=0;
+      const MAX_D = 140, DOT_R = 1.5, SPEED = 0.06; let last=0, hueBase=210;
+      function resize(){
+        dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1)); w = canvas.clientWidth; h = canvas.clientHeight; canvas.width = w*dpr; canvas.height = h*dpr;
+        ctx.setTransform(dpr,0,0,dpr,0,0); nodeCount = Math.max(40, Math.min(120, Math.floor((w*h)/18000))); spawnNodes();
       }
-
-      // connections
-      ctx.lineWidth = 1;
-      let links = 0;
-      for(let i=0;i<nodes.length;i++){
-        const a = nodes[i];
-        for(let j=i+1;j<nodes.length;j++){
-          const b = nodes[j];
-          const dx=a.x-b.x, dy=a.y-b.y;
-          const d = Math.hypot(dx,dy);
-          if(d<MAX_D){
-            const alpha = (1 - d/MAX_D) * 0.18; // subtle
-            ctx.strokeStyle = `hsla(${hue}, 30%, 75%, ${alpha})`;
-            ctx.beginPath();
-            ctx.moveTo(a.x,a.y);
-            ctx.lineTo(b.x,b.y);
-            ctx.stroke();
-            if(++links>nodeCount*3 || links>maxLinks) break;
-          }
-        }
-      }
-
-      // dots
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
-      for(const n of nodes){
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, DOT_R, 0, Math.PI*2);
-        ctx.fill();
-      }
-
-      requestAnimationFrame(step);
-    }
-
-    // init
-    resize();
-    requestAnimationFrame(step);
-    window.addEventListener('resize', resize);
-  })();
-
-  (function(){
-    const LS_ROUTES='wf_routes_v1', LS_MARKERS='wf_markers_v1', LS_YOU='wf_you_pos_v1';
-    let ROUTES=JSON.parse(localStorage.getItem(LS_ROUTES)||'{}');
-    let MARKERS=JSON.parse(localStorage.getItem(LS_MARKERS)||'{}');
-    let YOU_POS=JSON.parse(localStorage.getItem(LS_YOU)||'null');
-    let devUnlocked=false;
-
-    const $=q=>document.querySelector(q);
-    const svg=$('#svg'), pinsLayer=$('#pins'), route=$('#route'), routeBg=$('#routeBg'), draft=$('#draft'), arrow=$('#arrow');
-    const fromSel=$('#fromSel'), toSel=$('#toSel'), statusEl=$('#status'), devPanel=$('#devPanel');
-    const modeDev=$('#modeDev'), modeUser=$('#modeUser'), logoutDev=$('#logoutDev'), devToggle=$('#devToggle'), bg=$('#bg');
-    const addPointBtn=$('#addPoint'), setHereBtn=$('#setHere'), btnDraw=$('#btnDraw'), btnUndo=$('#btnUndo'), btnSave=$('#btnSave');
-    const btnDelete=$('#btnDelete'), btnExport=$('#btnExport'), importFile=$('#importFile'), btnClearAll=$('#btnClearAll'), btnListRoutes=$('#btnListRoutes');
-
-    let mode='user', placing=null, drawing=false, points=[], anim=null;
-
-    function setStatus(html){ statusEl && (statusEl.innerHTML=html); }
-    function saveRoutes(){ localStorage.setItem(LS_ROUTES, JSON.stringify(ROUTES)); }
-    function saveMarkers(){ localStorage.setItem(LS_MARKERS, JSON.stringify(MARKERS)); }
-    function saveYou(){ YOU_POS? localStorage.setItem(LS_YOU, JSON.stringify(YOU_POS)) : localStorage.removeItem(LS_YOU); }
-    const keyFor=(f,t)=>f+'→'+t;
-    function svgPoint(e){const pt=svg.createSVGPoint(); if(e.touches&&e.touches[0]){pt.x=e.touches[0].clientX; pt.y=e.touches[0].clientY;}else{pt.x=e.clientX; pt.y=e.clientY;} return pt.matrixTransform(svg.getScreenCTM().inverse());}
-    function drawPathD(list){ if(!list||!list.length) return ''; const a=list[0]; return 'M '+a.x+' '+a.y+' L '+list.map(p=>p.x+' '+p.y).join(' '); }
-    function clearRoute(){ route.setAttribute('d',''); routeBg.setAttribute('d',''); draft.setAttribute('d',''); if(anim) cancelAnimationFrame(anim); arrow.setAttribute('transform','translate(-100,-100)'); }
-
-    function fitToImage(){
-      const img=new Image();
-      img.onload=()=>{ const W=img.naturalWidth||768, H=img.naturalHeight||1344; svg.setAttribute('viewBox',`0 0 ${W} ${H}`); bg.setAttribute('width',W); bg.setAttribute('height',H); };
-      img.src=bg.getAttribute('href');
-    }
-    fitToImage();
-
-    // Mode switching
-    function login(){ const u=prompt('Username:'), p=prompt('Password:'); return (u==='awaiz' && p==='1234'); }
-    function setMode(m){
-      if(m==='dev' && !devUnlocked){ if(!login()){ alert('Access denied.'); modeUser&&(modeUser.checked=true); m='user'; } else { devUnlocked=true; } }
-      mode=m;
-      document.body.classList.toggle('user-only', m==='user');
-      devPanel && devPanel.classList.toggle('hidden', m!=='dev');
-      logoutDev && logoutDev.classList.toggle('hidden', m!=='dev');
-      (fromSel?.parentElement||{}).classList?.toggle('hidden', m!=='dev');
-      (toSel?.parentElement||{}).classList?.toggle('hidden', m!=='dev');
-      setStatus(m==='user' ? 'User mode: click a labeled area to go there. Start is <strong>You are here</strong>.' : 'Developer mode: add points, set start, draw and save routes.');
-      clearRoute(); renderPins();
-      modeDev && (modeDev.checked = m==='dev');
-      modeUser && (modeUser.checked = m==='user');
-    }
-    modeDev && modeDev.addEventListener('change',()=>setMode(modeDev.checked?'dev':'user'));
-    modeUser && modeUser.addEventListener('change',()=>setMode(modeUser.checked?'user':'dev'));
-    devToggle && devToggle.addEventListener('click',()=>setMode('dev'));
-    logoutDev && logoutDev.addEventListener('click',()=>{devUnlocked=false; modeUser&&(modeUser.checked=true); setMode('user');});
-
-    function fillSelects(){
-      if(!fromSel || !toSel) return;
-      fromSel.innerHTML=''; toSel.innerHTML='';
-      const addOpt=(el,val,txt)=>{const o=document.createElement('option');o.value=val;o.textContent=txt;el.appendChild(o);}
-      addOpt(fromSel,'YOU','You are here');
-      Object.keys(MARKERS).sort().forEach(n=>{addOpt(fromSel,n,n); addOpt(toSel,n,n);});
-      fromSel.value='YOU'; toSel.value='';
-    }
-
-    function ns(tag){return document.createElementNS('http://www.w3.org/2000/svg',tag)}
-    function renderPins(){
-      pinsLayer.innerHTML='';
-      for(const [name,p] of Object.entries(MARKERS)){
-        const g=ns('g'); g.setAttribute('transform',`translate(${p.x},${p.y})`);
-        const c=ns('circle'); c.setAttribute('r',8); c.style.fill='#ffffff18'; c.style.stroke='#cbd5e1';
-
-        // >>> White text with thin black outline for pin labels
-        const t=ns('text');
-        t.setAttribute('x',12); t.setAttribute('y',4); t.textContent=name;
-        t.setAttribute('fill','#ffffff');           // white
-        t.setAttribute('stroke','#000000');         // black outline
-        t.setAttribute('stroke-width','1.4');       // thin border
-        t.style.paintOrder = 'stroke';              // draw stroke behind fill
-
-        g.append(c,t);
-        g.addEventListener('click',()=>{ if(mode==='dev' && placing) return; if(mode==='user'){navigateTo(name);} else {toSel.value=name; setStatus('Selected destination: <b>'+name+'</b>.'); showRoute(fromSel.value||'YOU', name);} });
-        pinsLayer.appendChild(g);
-      }
-      if(YOU_POS){
-        const g=ns('g'); g.setAttribute('transform',`translate(${YOU_POS.x},${YOU_POS.y})`);
-        const c=ns('circle'); c.setAttribute('r',9); c.style.fill='#ffdcb8'; c.style.stroke='#ff6a00';
-
-        // >>> White text with thin black outline for "You are here"
-        const t=ns('text');
-        t.setAttribute('x',12); t.setAttribute('y',4); t.textContent='You are here';
-        t.setAttribute('fill','#ffffff');
-        t.setAttribute('stroke','#000000');
-        t.setAttribute('stroke-width','1.4');
-        t.style.paintOrder = 'stroke';
-
-        g.append(c,t); pinsLayer.appendChild(g);
-      }
-    }
-
-    function showRoute(fromKey,toKey){
-      clearRoute(); if(!fromKey||!toKey) return;
-      const arr=ROUTES[keyFor(fromKey,toKey)];
-      if(!arr || !arr.length){ if(mode==='user') setStatus('No saved route from <b>You are here</b> to <b>'+toKey+'</b>.'); return; }
-      const d=drawPathD(arr); route.setAttribute('d',d); routeBg.setAttribute('d',d);
-      setStatus('Showing saved route <b>'+label(fromKey)+'</b> → <b>'+label(toKey)+'</b>.'); animateAlong(route);
-    }
-    const label=k=>k==='YOU'?'You are here':k;
-
-    function animateAlong(path){
-      const L=path.getTotalLength(); let t0=null; const dur=Math.max(2000,L*4);
+      function spawnNodes(){ nodes = new Array(nodeCount).fill(0).map(()=>({ x: Math.random()*w, y: Math.random()*h, vx:(Math.random()*2-1)*SPEED, vy:(Math.random()*2-1)*SPEED })); }
       function step(ts){
-        if(!t0) t0=ts;
-        const dlen=((ts-t0)%dur)/dur*L;
-        const pos=path.getPointAtLength(dlen);
-        const ahead=path.getPointAtLength(Math.min(dlen+2,L));
-        const ang=Math.atan2(ahead.y-pos.y,ahead.x-pos.x)*180/Math.PI;
-        arrow.setAttribute('transform',`translate(${pos.x},${pos.y}) rotate(${ang})`);
-        anim=requestAnimationFrame(step);
-      }
-      if(anim) cancelAnimationFrame(anim); anim=requestAnimationFrame(step);
-    }
-
-    function navigateTo(name){
-      if(!YOU_POS){ setStatus('Set <b>You are here</b> in Developer mode first.'); return; }
-      setStatus('Destination selected: <b>'+name+'</b>.');
-      showRoute('YOU', name);
-    }
-
-    // Dev actions
-    addPointBtn && addPointBtn.addEventListener('click',()=>{ if(mode!=='dev') return; placing='point'; setStatus('Add point: click the map where the label should be.'); });
-    setHereBtn && setHereBtn.addEventListener('click',()=>{ if(mode!=='dev') return; placing='here'; setStatus('Set “You are here”: click the map.'); });
-    btnDraw && btnDraw.addEventListener('click',()=>{ if(mode!=='dev') return; const to=toSel.value; if(!to){ setStatus('Choose a destination in <b>To</b> first.'); return; } drawing=true; points=[]; btnUndo.disabled=false; btnSave.disabled=false; draft.setAttribute('d',''); setStatus('Drawing route… Click to add points, <span class="kbd">Enter</span> to finish.'); });
-    btnUndo && btnUndo.addEventListener('click',()=>{ if(!drawing||!points.length) return; points.pop(); draft.setAttribute('d',drawPathD(points)); });
-    btnSave && btnSave.addEventListener('click',()=>{ if(!drawing||!points.length){ setStatus('Nothing to save.'); return; } const from=fromSel.value||'YOU', to=toSel.value; ROUTES[keyFor(from,to)]=points.slice(); saveRoutes(); drawing=false; btnUndo.disabled=true; btnSave.disabled=true; draft.setAttribute('d',''); setStatus('Saved route.'); showRoute(from,to); });
-    btnDelete && btnDelete.addEventListener('click',()=>{ const from=fromSel.value||'YOU', to=toSel.value; if(!to){ setStatus('Select a destination.'); return; } const k=keyFor(from,to); if(ROUTES[k]){ if(confirm('Delete saved route?')){ delete ROUTES[k]; saveRoutes(); clearRoute(); setStatus('Deleted.'); } } else setStatus('No saved route.'); });
-    btnExport && btnExport.addEventListener('click',()=>{ const data={markers:MARKERS,you:YOU_POS,routes:ROUTES,meta:{exportedAt:new Date().toISOString(),version:1}}; const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='wayfinding-data.json'; a.click(); URL.revokeObjectURL(url); });
-    importFile && importFile.addEventListener('change',async e=>{ const f=e.target.files[0]; if(!f) return; try{ const data=JSON.parse(await f.text()); MARKERS=data.markers||{}; YOU_POS=data.you||null; ROUTES=data.routes||{}; saveMarkers(); saveYou(); saveRoutes(); fillSelects(); renderPins(); clearRoute(); setStatus('Imported.'); }catch{ alert('Invalid JSON file.'); } importFile.value=''; });
-    btnClearAll && btnClearAll.addEventListener('click',()=>{ if(!confirm('Clear all?')) return; MARKERS={}; YOU_POS=null; ROUTES={}; localStorage.removeItem(LS_MARKERS); localStorage.removeItem(LS_YOU); localStorage.removeItem(LS_ROUTES); fillSelects(); renderPins(); clearRoute(); setStatus('All data cleared.'); });
-    btnListRoutes && btnListRoutes.addEventListener('click',()=>{ const keys=Object.keys(ROUTES); alert(keys.length? 'Saved routes:\n'+keys.map(k=>k.replace('→',' → ')).join('\n') : 'No routes saved yet.'); });
-
-    // Map click for placing/drawing
-    svg.addEventListener('click',e=>{
-      const p=svgPoint(e);
-      if(placing){
-        if(placing==='point'){
-          const name=prompt('Enter location name (e.g., Reception)');
-          if(name && name.trim() && name!=='You are here' && name!=='YOU'){
-            MARKERS[name.trim()]={x:Math.round(p.x),y:Math.round(p.y)};
-            saveMarkers(); fillSelects(); renderPins(); setStatus('Added point: <b>'+name.trim()+'</b>.');
+        if(!last) last = ts; const dt = ts - last; last = ts; ctx.clearRect(0,0,w,h); const hue = (hueBase + (ts/80))%360;
+        for(const n of nodes){ n.x += n.vx * dt; n.y += n.vy * dt; if(n.x<0||n.x>w) n.vx*=-1; if(n.y<0||n.y>h) n.vy*=-1; }
+        ctx.lineWidth = 1; let links = 0;
+        for(let i=0;i<nodes.length;i++){
+          const a = nodes[i];
+          for(let j=i+1;j<nodes.length;j++){
+            const b = nodes[j], dx=a.x-b.x, dy=a.y-b.y, d = Math.hypot(dx,dy);
+            if(d<MAX_D){
+              const alpha = (1 - d/MAX_D) * 0.18; ctx.strokeStyle = `hsla(${hue}, 30%, 75%, ${alpha})`;
+              ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke();
+              if(++links>nodeCount*3 || links>maxLinks) break;
+            }
           }
-        }else if(placing==='here'){
-          YOU_POS={x:Math.round(p.x), y:Math.round(p.y)}; saveYou(); renderPins(); setStatus('Set <b>You are here</b>.');
         }
-        placing=null; return;
+        ctx.fillStyle = 'rgba(255,255,255,0.15)'; for(const n of nodes){ ctx.beginPath(); ctx.arc(n.x, n.y, DOT_R, 0, Math.PI*2); ctx.fill(); }
+        requestAnimationFrame(step);
       }
-      if(drawing){ points.push({x:Math.round(p.x),y:Math.round(p.y)}); draft.setAttribute('d',drawPathD(points)); }
-    });
+      resize(); requestAnimationFrame(step); window.addEventListener('resize', resize);
+    })();
 
-    // Keys while drawing
-    window.addEventListener('keydown',e=>{
-      if(!drawing) return;
-      if(e.key==='Escape'){ drawing=false; points=[]; draft.setAttribute('d',''); btnUndo.disabled=true; btnSave.disabled=true; setStatus('Drawing cancelled.'); }
-      else if(e.key==='Enter'){ btnSave.click(); }
-      else if((e.metaKey||e.ctrlKey) && e.key.toLowerCase()==='z'){ btnUndo.click(); }
-    });
+    (function(){
+      const firebaseConfig = {
+        apiKey: "AIzaSyDqwJLEhoTUI8qiUHnoSMioq4oQhTAgmks", authDomain: "mapit-e2534.firebaseapp.com", projectId: "mapit-e2534",
+        storageBucket: "mapit-e2534.firebasestorage.app", messagingSenderId: "584091763757", appId: "1:584091763757:web:6aff9a34a807b4e3c024a4"
+      };
+      firebase.initializeApp(firebaseConfig); const db = firebase.firestore(); const mapDocRef = db.collection("maps").doc("main-map-data");
 
-    // Init (default User mode)
-    fillSelects();
-    renderPins();
-    document.body.classList.add('user-only');
-    modeUser && (modeUser.checked=true);
-    setStatus('User mode: click a labeled area to go there. Start is <strong>You are here</strong>.');
-  })();
+      const $=q=>document.querySelector(q);
+      const svg=$('#svg'), pinsLayer=$('#pins'), route=$('#route'), routeBg=$('#routeBg'), bg=$('#bg'), arrow=$('#arrow'), draft=$('#draft'), searchInput=$('#searchInput');
+      const goDevMode=$('#goDevMode'), goUserMode=$('#goUserMode'), fromSel=$('#fromSel'), toSel=$('#toSel');
+      const addPointBtn=$('#addPoint'), setHereBtn=$('#setHere'), btnDraw=$('#btnDraw'), btnUndo=$('#btnUndo');
+      const btnSave=$('#btnSave'), btnDelete=$('#btnDelete'), btnExport=$('#btnExport'), importFile=$('#importFile');
+      const rotateMapBtn = $('#rotateMap');
+
+      let ROUTES={}, MARKERS={}, YOU_POS=null;
+      let mode='user', placing=null, drawing=false, points=[], anim=null, devUnlocked=false, rotation = 0;
+
+      function loadData() {
+        mapDocRef.onSnapshot(doc => {
+          if (doc.exists) {
+            const data = doc.data();
+            ROUTES = data.routes || {}; MARKERS = data.markers || {}; YOU_POS = data.you || null;
+            renderPins(document.querySelector('.category-item.active')?.dataset.category || 'all');
+            fillSelects();
+          }
+        }, error => console.error("Error listening to map data:", error));
+      }
+
+      function saveDataToFirebase() {
+        if (mode !== 'dev' || !devUnlocked) return;
+        mapDocRef.set({ markers: MARKERS, routes: ROUTES, you: YOU_POS }, { merge: true }).catch(error => console.error("Error saving to Firebase:", error));
+      }
+
+      function setMode(newMode) {
+        if (newMode === 'dev' && !devUnlocked) {
+            const u=prompt('Username:'), p=prompt('Password:');
+            if (u==='awaiz' && p==='1234') devUnlocked = true; else { alert('Access denied.'); return; }
+        }
+        mode = newMode; document.body.classList.toggle('dev-mode', mode === 'dev'); clearRoute(); renderPins();
+      }
+      
+      function fitToImage(){
+        const img=new Image();
+        img.onload=()=>{
+            const W=img.naturalWidth||768, H=img.naturalHeight||1344;
+            svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+            bg.setAttribute('width',W);
+            bg.setAttribute('height',H);
+            renderPins();
+            
+            const panzoomScript = document.createElement('script');
+            panzoomScript.src = 'https://unpkg.com/@panzoom/panzoom@4.5.1/dist/panzoom.min.js';
+            panzoomScript.onload = () => {
+                const container = svg.parentElement;
+                if (!container) return;
+
+                const containerWidth = container.clientWidth;
+                const containerHeight = container.clientHeight;
+                
+                const scaleX = containerWidth / W;
+                const scaleY = containerHeight / H;
+                const startScale = Math.min(scaleX, scaleY);
+
+                Panzoom(svg, {
+                    maxScale: 15, // Increased max zoom for more detail
+                    minScale: 0.3, // Allow zooming out further
+                    startScale: startScale, // Start zoomed to fit the whole map
+                    // No 'contain' property for maximum panning freedom
+                });
+            };
+            document.body.appendChild(panzoomScript);
+        };
+        img.src=bg.getAttribute('href');
+      }
+
+      const keyFor = (f, t) => f + '→' + t;
+      function drawPathD(list) { if (!list || !list.length) return ''; const a = list[0]; return 'M ' + a.x + ' ' + a.y + ' L ' + list.map(p => p.x + ' ' + p.y).join(' '); }
+      function clearRoute() { route.setAttribute('d', ''); routeBg.setAttribute('d', ''); draft.setAttribute('d', ''); if (anim) cancelAnimationFrame(anim); arrow.setAttribute('transform', 'translate(-100,-100)'); }
+      const ns = tag => document.createElementNS('http://www.w3.org/2000/svg', tag);
+      
+      function renderPins(filterCategory = 'all') {
+          if (!MARKERS || !bg.getAttribute('width')) return;
+          pinsLayer.innerHTML = ''; const W = parseInt(bg.getAttribute('width')), H = parseInt(bg.getAttribute('height'));
+          const transform = `rotate(${rotation} ${W/2} ${H/2})`;
+          
+          Object.entries(MARKERS).forEach(([name, p]) => {
+              const categoryOfMarker = p.category || 'general';
+              if (mode === 'user' && filterCategory !== 'all' && categoryOfMarker !== filterCategory) return;
+              const g = ns('g'); g.setAttribute('transform', `translate(${p.x},${p.y})`); g.style.cursor = 'pointer';
+              const c = ns('circle'); c.setAttribute('r', 8); c.style.fill = (mode === 'dev' ? '#7c3aed' : '#ef4444'); c.style.stroke = 'white'; c.style.strokeWidth = '2';
+              const t = ns('text'); t.setAttribute('x', 0); t.setAttribute('y', 24); t.textContent = name; t.setAttribute('text-anchor', 'middle');
+              g.append(c, t); g.addEventListener('click', () => { if (mode === 'user') navigateTo(name); });
+              pinsLayer.appendChild(g);
+          });
+          if (YOU_POS) {
+              const g = ns('g'); g.setAttribute('transform', `translate(${YOU_POS.x},${YOU_POS.y})`);
+              const c = ns('circle'); c.setAttribute('r', 7); c.style.fill = '#007aff'; c.style.stroke = 'white'; c.style.strokeWidth = '3';
+              const t = ns('text'); t.setAttribute('x', 0); t.setAttribute('y', -16); t.textContent = 'You are here'; t.setAttribute('text-anchor', 'middle'); t.style.fontSize = '16px';
+              g.append(c, t); pinsLayer.appendChild(g);
+          }
+          [bg, pinsLayer, route, routeBg, draft].forEach(el => el.setAttribute('transform', transform));
+      }
+      
+      function showRoute(fromKey, toKey) { clearRoute(); if (!fromKey || !toKey || !ROUTES) return; const arr = ROUTES[keyFor(fromKey, toKey)]; if (!arr || !arr.length) return; const d = drawPathD(arr); route.setAttribute('d', d); routeBg.setAttribute('d', d); animateAlong(route); }
+      
+      function animateAlong(path) {
+          const L = path.getTotalLength(); if (L === 0) return; let t0 = null; const dur = Math.max(2000, L * 5);
+          function step(ts) {
+              if (anim === null) return;
+              if (!t0) t0 = ts; const dlen = ((ts - t0) % dur) / dur * L;
+              
+              const current_pos = path.getPointAtLength(dlen);
+              const ahead_pos = path.getPointAtLength(Math.min(dlen + 5, L));
+              const matrix = path.getScreenCTM();
+              
+              const p1 = svg.createSVGPoint(); p1.x = current_pos.x; p1.y = current_pos.y;
+              const p2 = svg.createSVGPoint(); p2.x = ahead_pos.x; p2.y = ahead_pos.y;
+              
+              const final_p1 = p1.matrixTransform(matrix);
+              const final_p2 = p2.matrixTransform(matrix);
+              
+              const angle = Math.atan2(final_p2.y - final_p1.y, final_p2.x - final_p1.x) * 180 / Math.PI;
+
+              arrow.setAttribute('transform', `translate(${final_p1.x},${final_p1.y}) rotate(${angle})`);
+              anim = requestAnimationFrame(step);
+          }
+          if (anim) cancelAnimationFrame(anim);
+          anim = requestAnimationFrame(step);
+      }
+      
+      const navigateTo = name => { if (!YOU_POS) return; showRoute('YOU', name); searchInput.value = name; };
+      const addOpt = (el, val, txt) => { const o = document.createElement('option'); o.value = val; o.textContent = txt; el.appendChild(o); };
+      function fillSelects() { if (!fromSel || !toSel) return; fromSel.innerHTML = ''; toSel.innerHTML = ''; addOpt(fromSel, 'YOU', 'You are here'); Object.keys(MARKERS).sort().forEach(n => { addOpt(fromSel, n, n); addOpt(toSel, n, n); }); }
+
+      goDevMode.addEventListener('click', () => setMode('dev')); goUserMode.addEventListener('click', () => setMode('user'));
+      addPointBtn.addEventListener('click', () => { placing = 'point'; }); setHereBtn.addEventListener('click', () => { placing = 'here'; });
+      btnDraw.addEventListener('click', () => { if (!toSel.value) return alert('Choose a destination.'); drawing = true; points = []; btnUndo.disabled = false; btnSave.disabled = false; draft.setAttribute('d', ''); });
+      btnUndo.addEventListener('click', () => { if (!drawing || !points.length) return; points.pop(); draft.setAttribute('d', drawPathD(points)); });
+      btnSave.addEventListener('click', () => { if (!drawing || !points.length) return; const from = fromSel.value || 'YOU', to = toSel.value; ROUTES[keyFor(from, to)] = points.slice(); saveDataToFirebase(); drawing = false; points = []; draft.setAttribute('d', ''); btnUndo.disabled = true; btnSave.disabled = true; showRoute(from, to); });
+      btnDelete.addEventListener('click', () => { const from = fromSel.value || 'YOU', to = toSel.value; if (!to) return alert('Select a route to delete.'); const k = keyFor(from, to); if (ROUTES[k] && confirm(`Delete route: ${from} to ${to}?`)) { delete ROUTES[k]; saveDataToFirebase(); clearRoute(); } });
+      btnExport.addEventListener('click', () => { const dataStr = JSON.stringify({ markers: MARKERS, you: YOU_POS, routes: ROUTES }, null, 2); const blob = new Blob([dataStr], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'wayfinding-data.json'; a.click(); URL.revokeObjectURL(url); });
+      importFile.addEventListener('change', e => { const f = e.target.files[0]; if (!f) return; f.text().then(text => { const data = JSON.parse(text); MARKERS = data.markers || {}; YOU_POS = data.you || null; ROUTES = data.routes || {}; saveDataToFirebase(); renderPins(); }).catch(err => alert('Invalid JSON.')); importFile.value = ''; });
+      
+      const svgPoint = e => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); }
+      svg.addEventListener('click', e => {
+          if (mode !== 'dev') return; const p = svgPoint(e);
+          if (placing) {
+              if (placing === 'point') {
+                  const name = prompt('Location name:');
+                  if (name && name.trim()) {
+                      const cat = prompt('Category: (offices, training, services)', 'general');
+                      MARKERS[name.trim()] = { x: Math.round(p.x), y: Math.round(p.y), category: cat ? cat.trim().toLowerCase() : 'general' };
+                      saveDataToFirebase();
+                  }
+              } else if (placing === 'here') { YOU_POS = { x: Math.round(p.x), y: Math.round(p.y) }; saveDataToFirebase(); }
+              placing = null;
+          } else if (drawing) { points.push({ x: Math.round(p.x), y: Math.round(p.y) }); draft.setAttribute('d', drawPathD(points)); }
+      });
+      window.addEventListener('keydown', e => { if (drawing && e.key === 'Enter') btnSave.click(); if (drawing && e.key === 'Escape') { drawing = false; points = []; draft.setAttribute('d', ''); btnUndo.disabled = true; btnSave.disabled = true; } });
+      $('#category-filters').addEventListener('click', e => { const item = e.target.closest('.category-item'); if (!item) return; $('#category-filters .active').classList.remove('active'); item.classList.add('active'); clearRoute(); renderPins(item.dataset.category); });
+      rotateMapBtn.addEventListener('click', () => { rotation = (rotation + 90) % 360; renderPins(); const currentRoute = route.getAttribute('d'); if(currentRoute) { animateAlong(route) } });
+      
+      searchInput.addEventListener('keydown', e => {
+          if (e.key === 'Enter') {
+              const query = searchInput.value.trim().toLowerCase();
+              if (!query) { clearRoute(); return; }
+              const matchedKey = Object.keys(MARKERS).find(key => key.trim().toLowerCase() === query);
+              if (matchedKey) { navigateTo(matchedKey); } else { alert('Location not found.'); }
+          }
+      });
+      searchInput.addEventListener('input', () => { if (searchInput.value.trim() === '') clearRoute(); });
+      
+      fitToImage();
+      loadData();
+    })();
   </script>
 </body>
 </html>
