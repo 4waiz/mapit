@@ -299,13 +299,22 @@
       rotateMapBtn.addEventListener('click', () => { rotation = (rotation + 90) % 360; renderPins(); const currentRoute = route.getAttribute('d'); if(currentRoute) { animateAlong(route) } });
       
       searchInput.addEventListener('keydown', e => {
-          if (e.key === 'Enter') {
-              const query = searchInput.value.trim().toLowerCase();
-              if (!query) { clearRoute(); return; }
-              const matchedKey = Object.keys(MARKERS).find(key => key.trim().toLowerCase() === query);
-              if (matchedKey) { navigateTo(matchedKey); } else { alert('Location not found.'); }
-          }
-      });
+    if (e.key === 'Enter') {
+        const query = searchInput.value.trim().toLowerCase();
+        if (!query) { clearRoute(); return; }
+
+        // Match even partial input (start of the word)
+        const matchedKey = Object.keys(MARKERS).find(key =>
+            key.trim().toLowerCase().startsWith(query)
+        );
+
+        if (matchedKey) {
+            navigateTo(matchedKey);
+        } else {
+            alert('No match found. Try typing the first few letters.');
+        }
+    }
+});
       searchInput.addEventListener('input', () => { if (searchInput.value.trim() === '') clearRoute(); });
       
       fitToImage();
